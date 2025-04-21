@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Snake med Global Highscore</title>
+  <link rel="stylesheet" href="https://pyscript.net/releases/2025.3.1/core.css" />
+  <script type="module" src="https://pyscript.net/releases/2025.3.1/core.js"></script>
+  <style>
+    body {
+      background-color: #000;
+      text-align: center;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      background-color: #222;
+      border: 1px solid white;
+      margin-top: 20px;
+    }
+    #startScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #startButton {
+      font-size: 24px;
+      padding: 10px 20px;
+      margin-bottom: 20px;
+    }
+    #topList {
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Snake med Global Highscore</h1>
+  <div id="startScreen">
+    <button id="startButton">Klicka för att starta spelet</button>
+    <div id="topList">Hämtar global highscore...</div>
+  </div>
+  <canvas id="gameCanvas" width="600" height="400"></canvas>
+  <audio id="soundFood" src="pling.wav"></audio>
+  <audio id="soundDeath" src="death.wav"></audio>
+  <audio id="bgMusic" src="music.ogg" loop></audio>
+
+  <py-script>
+import asyncio, random, time, json
+from js import document, window, fetch
+from pyodide.ffi import create_proxy
+
+# Globala spelvariabler
+WIDTH, HEIGHT, CELL = 600, 400, 20
+canvas = document.getElementById("gameCanvas")
+ctx = canvas.getContext("2d")
+game_state = "waiting"
+game_loop_running = False
+player_snake = [(WIDTH // 2, HEIGHT // 2)]
+player_length = 5
+player_score = 0
+enemy_snake = [(300, 200)]
+enemy_length = 1
+start_time = time.time()
+foods = [(random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "red") for _ in range(2)]
+direction = (CELL, 0)
+highscores = []
+counter = 0
+
+# Highscore API
+async def submit_highscore(name, score):
+    url = "https://highscore.jonas-krantz-1.workers.dev/highscores"
+    payload = json.dumps({"name": name, "score": score})
+    print("Payload:", payload)
+    response = await fetch(url, {
+        "method": "POST",
+        "headers": {"Content-Type": "application/json"},
+        "body": payload
+    })
+    print("Eftersom du ser detta i devtools-console är POST gjord!")
+    result = await response.json()
+    return result.to_py()
+
+async def get_highscores():
+    url = "https://highscore.jonas-krantz-1.workers.dev/highscores"
+    response = await fetch(url)
+    result = await response.json()
+    return result.to_py()
+
+async def check_highscore():
+    global highscores, player_score
+    name = window.prompt("NY HIGH SCORE! Namn:")
+    if not name:
+        name = "Anon"
+    print("🔼 Skickar till Worker:", name, player_score)
+    highscores = await submit_highscore(name, player_score)
+    print("✅ Svar från Worker:", highscores)
+    await update_start_toplist()
+
+
+def stop_music():
+    try:
+        document.getElementById("bgMusic").pause()
+    except:
+        pass
+
+async def game_over():
+    global game_state
+    stop_music()
+    try:
+        document.getElementById("soundDeath").play()
+    except:
+        pass
+    game_state = "gameover"
+    await check_highscore()
+
+async def game_loop():
+    global counter, game_state, game_loop_running
+    if game_loop_running:
+        return
+    game_loop_running = True
+    while True:
+        if game_state == "playing":
+            ctx.fillStyle = "black"
+            ctx.fillRect(0, 0, WIDTH, HEIGHT)
+            update_snake()
+            draw_snake()
+            draw_food()
+            draw_enemy()
+            draw_ui()
+            if counter % 2 == 0:
+                update_enemy()
+            if not any(f[2] == "yellow" for f in foods) and random.random() < 0.01:
+                foods.append((random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "yellow"))
+            counter += 1
+        elif game_state == "gameover":
+            draw_game_over()
+        await asyncio.sleep(0.1)
+
+def draw_game_over():
+    ctx.fillStyle = "red"
+    ctx.font = "48px Arial"
+    ctx.fillText("GAME OVER", WIDTH // 2 - 140, HEIGHT // 2 - 20)
+    ctx.fillStyle = "white"
+    ctx.font = "24px Arial"
+    ctx.fillText(f"Poäng: {player_score}", WIDTH // 2 - 60, HEIGHT // 2 + 20)
+    ctx.fillText("Tryck på start för att spela igen", WIDTH // 2 - 150, HEIGHT // 2 + 60)
+    draw_ui()
+
+def draw_snake():
+    for x, y in player_snake:
+        ctx.fillStyle = "lime"
+        ctx.fillRect(x, y, CELL, CELL)
+
+def draw_food():
+    for x, y, kind in foods:
+        ctx.fillStyle = "gold" if kind == "yellow" else "red"
+        ctx.fillRect(x, y, CELL, CELL)
+
+def draw_enemy():
+    for x, y in enemy_snake:
+        ctx.fillStyle = "blue"
+        ctx.fillRect(x, y, CELL, CELL)
+
+def draw_ui():
+    ctx.fillStyle = "white"
+    ctx.font = "16px Arial"
+    ctx.fillText(f"Poäng: {player_score}", 10, 20)
+    if game_state == "gameover":
+        y = 100
+        ctx.fillText("Topplista:", 10, y)
+        for entry in highscores:
+            y += 20
+            ctx.fillText(f"{entry['name']}: {entry['score']}", 10, y)
+
+def update_snake():
+    global player_snake, player_score, player_length
+    head_x, head_y = player_snake[0]
+    dx, dy = direction
+    new_head = ((head_x + dx) % WIDTH, (head_y + dy) % HEIGHT)
+    if new_head in player_snake or new_head in enemy_snake:
+        asyncio.ensure_future(game_over())
+        return
+    player_snake.insert(0, new_head)
+    for f in foods[:]:
+        if (f[0], f[1]) == new_head:
+            player_length += 1
+            player_score += 10 if f[2] == "red" else 30
+            try:
+                document.getElementById("soundFood").play()
+            except:
+                pass
+            foods.remove(f)
+            if f[2] == "red":
+                foods.append((random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "red"))
+            return
+    if len(player_snake) > player_length:
+        player_snake.pop()
+
+def update_enemy():
+    global enemy_snake, enemy_length
+    head = enemy_snake[0]
+    target = next(((fx, fy) for fx, fy, kind in foods if kind == "red"), None)
+    if target:
+        dx = target[0] - head[0]
+        dy = target[1] - head[1]
+        move = (CELL if dx > 0 else -CELL, 0) if abs(dx) > abs(dy) else (0, CELL if dy > 0 else -CELL)
+    else:
+        move = random.choice([(CELL,0), (-CELL,0), (0,CELL), (0,-CELL)])
+    new_head = ((head[0]+move[0])%WIDTH, (head[1]+move[1])%HEIGHT)
+    if new_head in enemy_snake:
+        enemy_snake[:] = [(300, 200)]
+        enemy_length = 1
+        return
+    enemy_snake.insert(0, new_head)
+    for f in foods[:]:
+        if (f[0], f[1]) == new_head and f[2] == "red":
+            enemy_length += 1
+            foods.remove(f)
+            foods.append((random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "red"))
+            return
+    if len(enemy_snake) > enemy_length:
+        enemy_snake.pop()
+
+def key_handler(e):
+    global direction
+    key = e.key
+    if game_state != "playing":
+        return
+    if key == "ArrowUp" and direction[1] == 0:
+        direction = (0, -CELL)
+    elif key == "ArrowDown" and direction[1] == 0:
+        direction = (0, CELL)
+    elif key == "ArrowLeft" and direction[0] == 0:
+        direction = (-CELL, 0)
+    elif key == "ArrowRight" and direction[0] == 0:
+        direction = (CELL, 0)
+
+def start_game(evt=None):
+    global game_state, game_loop_running
+    game_state = "playing"
+    game_loop_running = False  # tillåter ny loop vid omstart
+    reset_game()
+    document.getElementById("startScreen").style.display = "none"
+    try:
+        document.getElementById("bgMusic").play()
+    except:
+        pass
+    asyncio.ensure_future(game_loop())
+
+def reset_game():
+    global player_snake, player_length, player_score, enemy_snake, enemy_length, direction, foods, counter
+    player_snake[:] = [(WIDTH // 2, HEIGHT // 2)]
+    player_length = 5
+    player_score = 0
+    enemy_snake[:] = [(300, 200)]
+    enemy_length = 1
+    direction = (CELL, 0)
+    foods[:] = [(random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "red") for _ in range(2)]
+    counter = 0
+
+async def update_start_toplist():
+    global highscores
+    try:
+        hs = await get_highscores()
+        highscores = hs
+        html = "<h3>Global Topplista:</h3>"
+        for entry in hs:
+            html += f"<p>{entry['name']}: {entry['score']}</p>"
+        document.getElementById("topList").innerHTML = html
+    except Exception as e:
+        document.getElementById("topList").innerHTML = f"<p>Fel: {e}</p>"
+
+# Event-bindningar
+start_proxy = create_proxy(start_game)
+document.getElementById("startButton").addEventListener("click", start_proxy)
+key_proxy = create_proxy(key_handler)
+document.addEventListener("keydown", key_proxy)
+asyncio.ensure_future(update_start_toplist())
+  </py-script>
+</body>
+</html>
