@@ -57,7 +57,7 @@
 <body>
   <h1>Snake med Global Highscore</h1>
   <div id="startScreen">
-    <button id="startButton">Klicka för att starta spelet</button>
+    <button id="startButton" onclick="startWithMusic()">Klicka för att starta spelet</button>
     <div id="topList">Hämtar global highscore...</div>
   </div>
 
@@ -301,12 +301,6 @@ def start_game(evt=None):
     game_loop_running = False  # tillåter ny loop vid omstart
     reset_game()
     document.getElementById("startScreen").style.display = "none"
-    music = document.getElementById("bgMusic")
-    if music and music.paused:
-        promise = music.play()
-    if promise is not None:
-        promise.catch(lambda e: None)
-
     asyncio.ensure_future(game_loop())
 
 def reset_game():
@@ -358,6 +352,15 @@ if game_state == "playing":
 `;
       pyodide.runPython(code);
     }
+    
+    function startWithMusic() {
+    const music = document.getElementById("bgMusic");
+    if (music && music.paused) {
+      music.play().catch(() => {}); // Tyst fånga ev. fel
+    }
+    // Kör Python-funktion för att starta spelet
+    pyodide.runPythonAsync("start_game()")
+  }
   </script>
 </body>
 </html>
