@@ -151,7 +151,7 @@ async def get_highscores():
     result = await response.json()
     return result.to_py()
 
-aasync def check_highscore():
+async def check_highscore():
     global highscores, player_score
 
     # 1. Hämta aktuell lista
