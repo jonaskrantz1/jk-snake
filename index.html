@@ -353,14 +353,16 @@ if game_state == "playing":
       pyodide.runPython(code);
     }
     
-    function startWithMusic() {
+
+  function startWithMusic() {
     const music = document.getElementById("bgMusic");
     if (music && music.paused) {
-      music.play().catch(() => {}); // Tyst fånga ev. fel
+      music.load(); // För Safari
+      music.play().catch(() => {});
     }
-    // Kör Python-funktion för att starta spelet
-    pyodide.runPythonAsync("start_game()")
+    pyodide.runPythonAsync("start_game()");
   }
+
   </script>
 </body>
 </html>
