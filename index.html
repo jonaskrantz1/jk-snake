@@ -176,7 +176,9 @@ async def game_over():
     except:
         pass
     game_state = "gameover"
+    await asyncio.sleep(0.1)  # Liten paus för att hinna spela ljud
     await check_highscore()
+
 
 async def game_loop():
     global counter, game_state, game_loop_running
