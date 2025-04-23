@@ -425,7 +425,7 @@ if game_state == "playing":
     }
     
 
-async function startWithMusic() {
+  async function startWithMusic() {
     const music = document.getElementById("bgMusic");
     if (music && music.paused) {
       try {
@@ -435,12 +435,17 @@ async function startWithMusic() {
       }
     }
 
-    // Kör Python via pyscript API
-    if (typeof pyscript !== 'undefined') {
-      await pyscript.runPythonAsync("start_game()")
-    } else {
-      console.error("❌ pyscript saknas – kunde inte starta spelet")
-    }
+    // Vänta tills PyScript är färdigt
+    const check = () => {
+      if (window.pyscript && pyscript.interpreter) {
+        const startGame = pyscript.interpreter.globals.get("start_game");
+        if (startGame) startGame();
+      } else {
+        console.log("⏳ Väntar på pyscript...");
+        setTimeout(check, 100);
+      }
+    };
+    check();
   }
 
   </script>
