@@ -408,23 +408,30 @@ asyncio.ensure_future(update_start_toplist())
   <script>
     
   async function startWithMusic() {
-      const music = document.getElementById("bgMusic");
-      if (music && music.paused) {
-        try {
-          await music.play();
-        } catch (e) {
-          console.log("🎵 Musikblockerad:", e);
-        }
-      }
-
-      if (typeof pyodideReadyPromise !== "undefined") {
-        await pyodideReadyPromise;
-        pyodide.runPython("start_game()");
-      } else {
-        console.error("❌ pyodideReadyPromise saknas – kunde inte starta spelet");
+    const music = document.getElementById("bgMusic");
+    if (music && music.paused) {
+      try {
+        await music.play();
+      } catch (e) {
+        console.log("🎵 Musikblockerad:", e);
       }
     }
 
+    // Vänta tills PyScript är redo genom att lyssna på custom-event
+    if (window.pyscript_loaded) {
+      pyodide.runPython("start_game()");
+    } else {
+      document.addEventListener("pyscript:ready", () => {
+        pyodide.runPython("start_game()");
+      }, { once: true });
+    }
+  }
+
+  // Sätt flagga när pyscript är redo
+  document.addEventListener("pyscript:ready", () => {
+    window.pyscript_loaded = true;
+  });
+  
   </script>
 </body>
 </html>
