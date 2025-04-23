@@ -293,29 +293,53 @@ def update_snake():
         player_snake.pop()
 
 def update_enemy():
-    global enemy_snake, enemy_length
+    global enemy_snake, enemy_length, game_state
     head = enemy_snake[0]
-    target = next(((fx, fy) for fx, fy, kind in foods if kind == "red"), None)
-    if target:
-        dx = target[0] - head[0]
-        dy = target[1] - head[1]
-        move = (CELL if dx > 0 else -CELL, 0) if abs(dx) > abs(dy) else (0, CELL if dy > 0 else -CELL)
-    else:
-        move = random.choice([(CELL,0), (-CELL,0), (0,CELL), (0,-CELL)])
-    new_head = ((head[0]+move[0])%WIDTH, (head[1]+move[1])%HEIGHT)
-    if new_head in enemy_snake:
+
+    dx, dy = get_valid_enemy_move(head)
+    new_head = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
+
+    # Krock med sig själv eller spelaren → omstart
+    if new_head in enemy_snake or new_head in player_snake:
         enemy_snake[:] = [(300, 200)]
         enemy_length = 1
         return
+
     enemy_snake.insert(0, new_head)
+
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "red":
             enemy_length += 1
             foods.remove(f)
             foods.append((random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "red"))
             return
+
     if len(enemy_snake) > enemy_length:
         enemy_snake.pop()
+
+        
+def get_valid_enemy_move(head):
+    directions = [(CELL, 0), (-CELL, 0), (0, CELL), (0, -CELL)]
+    random.shuffle(directions)  # så den inte fastnar i ett mönster
+
+    def is_safe(pos):
+        return pos not in enemy_snake and pos not in player_snake
+
+    target = next(((fx, fy) for fx, fy, kind in foods if kind == "red"), None)
+
+    # Prioritera drag som närmar sig mål
+    if target:
+        directions.sort(key=lambda d: abs((head[0] + d[0]) % WIDTH - target[0]) + abs((head[1] + d[1]) % HEIGHT - target[1]))
+
+    for dx, dy in directions:
+        new_pos = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
+        if is_safe(new_pos):
+            return dx, dy
+
+    # Inga säkra drag → gå ändå (kommer leda till död och omstart)
+    return directions[0]
+        
+        
 
 def key_handler(e):
     global direction
