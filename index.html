@@ -60,14 +60,15 @@
     <button id="startButton">Klicka för att starta spelet</button>
     <div id="topList">Hämtar global highscore...</div>
   </div>
+
   <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-  <!-- Touchkontroller för mobil -->
+  <!-- Touchkontroller -->
   <div id="touchControls">
-    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowUp'}))">⬆️</button><br>
-    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowLeft'}))">⬅️</button>
-    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowDown'}))">⬇️</button>
-    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowRight'}))">➡️</button>
+    <button onclick="setDirection('up')">⬆️</button><br>
+    <button onclick="setDirection('left')">⬅️</button>
+    <button onclick="setDirection('down')">⬇️</button>
+    <button onclick="setDirection('right')">➡️</button>
   </div>
 
   <audio id="soundFood" src="pling.wav"></audio>
@@ -313,5 +314,25 @@ key_proxy = create_proxy(key_handler)
 document.addEventListener("keydown", key_proxy)
 asyncio.ensure_future(update_start_toplist())
   </py-script>
+  
+  <!-- JavaScript för mobilvänlig styrning -->
+  <script>
+    function setDirection(dir) {
+      let code = `
+from js import window
+if game_state == "playing":
+    global direction
+    if "${dir}" == "up" and direction[1] == 0:
+        direction = (0, -CELL)
+    elif "${dir}" == "down" and direction[1] == 0:
+        direction = (0, CELL)
+    elif "${dir}" == "left" and direction[0] == 0:
+        direction = (-CELL, 0)
+    elif "${dir}" == "right" and direction[0] == 0:
+        direction = (CELL, 0)
+`;
+      pyodide.runPython(code);
+    }
+  </script>
 </body>
 </html>
