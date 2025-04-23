@@ -407,31 +407,39 @@ asyncio.ensure_future(update_start_toplist())
   
  <!-- ✅ JavaScript som spelar musik + startar spelet -->
   <script>
-    async function startWithMusic() {
-      const music = document.getElementById("bgMusic");
-      if (music && music.paused) {
-        try {
-          await music.play();
-        } catch (e) {
-          console.log("🎵 Musikblockerad:", e);
-        }
+  async function startWithMusic() {
+    const music = document.getElementById("bgMusic");
+    if (music && music.paused) {
+      try {
+        await music.play();
+      } catch (e) {
+        console.log("🎵 Musikblockerad:", e);
       }
-
-      const waitForStart = () => {
-        if (window.pyscript?.interpreter?.globals?.get) {
-          const start = pyscript.interpreter.globals.get("start_game");
-          if (start) {
-            start(); // 🟢 KÖR PYTHON start_game()
-          } else {
-            console.log("🔁 Väntar på att start_game() ska bli tillgänglig...");
-            setTimeout(waitForStart, 100);
-          }
-        } else {
-          setTimeout(waitForStart, 100);
-        }
-      };
-      waitForStart();
     }
+
+    // Vänta på pyscript:ready event
+    const ensureStart = () => {
+      try {
+        const startFn = pyscript.interpreter.globals.get("start_game");
+        if (startFn) {
+          startFn();
+        } else {
+          console.log("⏳ Väntar på att start_game ska laddas...");
+          setTimeout(ensureStart, 100);
+        }
+      } catch (err) {
+        setTimeout(ensureStart, 100);
+      }
+    };
+
+    if (window.pyscript?.interpreter?.globals?.get) {
+      ensureStart();
+    } else {
+      document.addEventListener("pyscript:ready", () => {
+        ensureStart();
+      });
+    }
+  }
   </script>
 </body>
 </html>
