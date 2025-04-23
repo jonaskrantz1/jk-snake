@@ -65,10 +65,10 @@
 
   <!-- Touchkontroller -->
   <div id="touchControls">
-    <button onclick="setDirection('up')">⬆️</button><br>
-    <button onclick="setDirection('left')">⬅️</button>
-    <button onclick="setDirection('down')">⬇️</button>
-    <button onclick="setDirection('right')">➡️</button>
+    <button id="btnUp">⬆️</button><br>
+    <button id="btnLeft">⬅️</button>
+    <button id="btnDown">⬇️</button>
+    <button id="btnRight">➡️</button>
   </div>
 
   <audio id="soundFood" src="pling.wav"></audio>
@@ -97,6 +97,29 @@ foods = [(random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "
 direction = (CELL, 0)
 highscores = []
 counter = 0
+
+#Mobilstyrning
+def touch_direction(dir):
+    global direction
+    if game_state != "playing":
+        return
+    if dir == "up" and direction[1] == 0:
+        direction = (0, -CELL)
+    elif dir == "down" and direction[1] == 0:
+        direction = (0, CELL)
+    elif dir == "left" and direction[0] == 0:
+        direction = (-CELL, 0)
+    elif dir == "right" and direction[0] == 0:
+        direction = (CELL, 0)
+
+# Bind touch-knappar till styrning
+from js import document
+from pyodide.ffi import create_proxy
+document.getElementById("btnUp").addEventListener("click", create_proxy(lambda e: touch_direction("up")))
+document.getElementById("btnDown").addEventListener("click", create_proxy(lambda e: touch_direction("down")))
+document.getElementById("btnLeft").addEventListener("click", create_proxy(lambda e: touch_direction("left")))
+document.getElementById("btnRight").addEventListener("click", create_proxy(lambda e: touch_direction("right")))
+
 
 # Highscore API
 async def submit_highscore(name, score):
@@ -278,10 +301,12 @@ def start_game(evt=None):
     game_loop_running = False  # tillåter ny loop vid omstart
     reset_game()
     document.getElementById("startScreen").style.display = "none"
-    try:
-        document.getElementById("bgMusic").play()
-    except:
-        pass
+    music = document.getElementById("bgMusic")
+    if music and music.paused:
+        promise = music.play()
+    if promise is not None:
+        promise.catch(lambda e: None)
+
     asyncio.ensure_future(game_loop())
 
 def reset_game():
