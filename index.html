@@ -425,7 +425,7 @@ if game_state == "playing":
     }
     
 
-  async function startWithMusic() {
+ async function startWithMusic() {
     const music = document.getElementById("bgMusic");
     if (music && music.paused) {
       try {
@@ -435,11 +435,9 @@ if game_state == "playing":
       }
     }
 
-    // Vänta tills PyScript är klart
-    if (typeof pyodide === 'undefined' || !pyodide.runPythonAsync) {
-      console.warn("⏳ Väntar på pyodide...");
-      setTimeout(startWithMusic, 50);
-      return;
+    // Vänta på Pyodide via PyScript:s inbyggda promise
+    if (typeof pyodideReadyPromise !== "undefined") {
+      await pyodideReadyPromise;
     }
 
     await pyodide.runPythonAsync("start_game()");
