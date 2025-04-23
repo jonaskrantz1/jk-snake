@@ -151,15 +151,34 @@ async def get_highscores():
     result = await response.json()
     return result.to_py()
 
-async def check_highscore():
+aasync def check_highscore():
     global highscores, player_score
+
+    # 1. Hämta aktuell lista
+    try:
+        hs = await get_highscores()
+    except Exception as e:
+        print("⚠️ Misslyckades hämta highscore:", e)
+        return
+
+    # 2. Kolla om poängen platsar (mindre än 10 poster, eller högre än lägsta)
+    qualifies = len(hs) < 10 or player_score > min(entry["score"] for entry in hs)
+
+    if not qualifies:
+        print("ℹ️ Poängen kvalar inte in:", player_score)
+        highscores = hs
+        return
+
+    # 3. Visa prompt och spara
     name = window.prompt("NY HIGH SCORE! Namn:")
     if not name:
         name = "Anon"
+
     print("🔼 Skickar till Worker:", name, player_score)
     highscores = await submit_highscore(name, player_score)
     print("✅ Svar från Worker:", highscores)
     await update_start_toplist()
+
 
 
 def stop_music():
