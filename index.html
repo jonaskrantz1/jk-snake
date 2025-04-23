@@ -52,6 +52,12 @@
       padding: 10px 20px;
       margin: 5px;
     }
+    /* Dölj touchkontroller på enheter med mus */
+    @media (hover: hover) {
+      #touchControls {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -63,7 +69,6 @@
 
   <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-  <!-- Touchkontroller -->
   <div id="touchControls">
     <button id="btnUp">⬆️</button><br>
     <button id="btnLeft">⬅️</button>
@@ -298,9 +303,16 @@ def key_handler(e):
 def start_game(evt=None):
     global game_state, game_loop_running
     game_state = "playing"
-    game_loop_running = False  # tillåter ny loop vid omstart
+    game_loop_running = False
     reset_game()
     document.getElementById("startScreen").style.display = "none"
+
+    # Ladda ljud så de spelas säkert senare (särskilt i Safari)
+    for id in ["soundFood", "soundDeath", "bgMusic"]:
+        el = document.getElementById(id)
+        if el:
+            el.load()
+
     asyncio.ensure_future(game_loop())
 
 def reset_game():
@@ -355,18 +367,16 @@ if game_state == "playing":
     
 
   function startWithMusic() {
-    const music = document.getElementById("bgMusic");
-    if (music && music.paused) {
-      music.play().catch((e) => {
-        console.log("🎵 Musikblockerad:", e);
-      });
+      const music = document.getElementById("bgMusic");
+      if (music && music.paused) {
+        music.play().catch((e) => {
+          console.log("🎵 Musikblockerad:", e);
+        });
+      }
+      setTimeout(() => {
+        pyodide.runPythonAsync("start_game()");
+      }, 0);
     }
-
-    // Starta spelet i nästa "tick" för att låta musiken triggas först
-    setTimeout(() => {
-      pyodide.runPythonAsync("start_game()");
-    }, 0);
-  }
 
   </script>
 </body>
