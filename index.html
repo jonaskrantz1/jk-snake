@@ -407,24 +407,7 @@ asyncio.ensure_future(update_start_toplist())
   
   <!-- JavaScript för mobilvänlig styrning -->
   <script>
-    function setDirection(dir) {
-      let code = `
-from js import window
-if game_state == "playing":
-    global direction
-    if "${dir}" == "up" and direction[1] == 0:
-        direction = (0, -CELL)
-    elif "${dir}" == "down" and direction[1] == 0:
-        direction = (0, CELL)
-    elif "${dir}" == "left" and direction[0] == 0:
-        direction = (-CELL, 0)
-    elif "${dir}" == "right" and direction[0] == 0:
-        direction = (CELL, 0)
-`;
-      pyodide.runPython(code);
-    }
     
-
   async function startWithMusic() {
     const music = document.getElementById("bgMusic");
     if (music && music.paused) {
@@ -435,17 +418,13 @@ if game_state == "playing":
       }
     }
 
-    // Vänta tills PyScript är färdigt
-    const check = () => {
-      if (window.pyscript && pyscript.interpreter) {
-        const startGame = pyscript.interpreter.globals.get("start_game");
-        if (startGame) startGame();
-      } else {
-        console.log("⏳ Väntar på pyscript...");
-        setTimeout(check, 100);
-      }
-    };
-    check();
+    // Vänta tills pyodide är redo
+    if (typeof pyodideReadyPromise !== "undefined") {
+      await pyodideReadyPromise;
+      pyodide.runPython("start_game()");
+    } else {
+      console.error("❌ pyodideReadyPromise saknas – kunde inte starta spelet");
+    }
   }
 
   </script>
