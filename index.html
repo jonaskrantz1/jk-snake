@@ -58,9 +58,6 @@
         display: none;
       }
     }
-    py-script#startGameScript {
-      display: none;
-    }
   </style>
 </head>
 <body>
@@ -83,10 +80,6 @@
   <audio id="soundDeath" src="death.wav"></audio>
   <audio id="bgMusic" src="music.mp3" loop></audio>
 
-<!-- ✅ Detta py-script kör start_game() när JS triggar det -->
-  <py-script id="startGameScript">
-start_game()
-  </py-script>
   
   <py-script>
 import asyncio, random, time, json
@@ -412,7 +405,7 @@ document.addEventListener("keydown", key_proxy)
 asyncio.ensure_future(update_start_toplist())
   </py-script>
   
-  <!-- JavaScript för mobilvänlig styrning -->
+ <!-- ✅ JavaScript som spelar musik + startar spelet -->
   <script>
     async function startWithMusic() {
       const music = document.getElementById("bgMusic");
@@ -424,12 +417,20 @@ asyncio.ensure_future(update_start_toplist())
         }
       }
 
-      const pyScript = document.getElementById("startGameScript");
-      if (pyScript) {
-        pyScript.run();
-      } else {
-        console.error("❌ Kunde inte hitta <py-script id='startGameScript'>");
-      }
+      const waitForStart = () => {
+        if (window.pyscript?.interpreter?.globals?.get) {
+          const start = pyscript.interpreter.globals.get("start_game");
+          if (start) {
+            start(); // 🟢 KÖR PYTHON start_game()
+          } else {
+            console.log("🔁 Väntar på att start_game() ska bli tillgänglig...");
+            setTimeout(waitForStart, 100);
+          }
+        } else {
+          setTimeout(waitForStart, 100);
+        }
+      };
+      waitForStart();
     }
   </script>
 </body>
