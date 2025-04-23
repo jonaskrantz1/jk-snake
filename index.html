@@ -425,17 +425,25 @@ if game_state == "playing":
     }
     
 
-  function startWithMusic() {
-      const music = document.getElementById("bgMusic");
-      if (music && music.paused) {
-        music.play().catch((e) => {
-          console.log("🎵 Musikblockerad:", e);
-        });
+  async function startWithMusic() {
+    const music = document.getElementById("bgMusic");
+    if (music && music.paused) {
+      try {
+        await music.play();
+      } catch (e) {
+        console.log("🎵 Musikblockerad:", e);
       }
-      setTimeout(() => {
-        pyodide.runPythonAsync("start_game()");
-      }, 0);
     }
+
+    // Vänta tills PyScript är klart
+    if (typeof pyodide === 'undefined' || !pyodide.runPythonAsync) {
+      console.warn("⏳ Väntar på pyodide...");
+      setTimeout(startWithMusic, 50);
+      return;
+    }
+
+    await pyodide.runPythonAsync("start_game()");
+  }
 
   </script>
 </body>
