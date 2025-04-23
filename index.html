@@ -357,10 +357,15 @@ if game_state == "playing":
   function startWithMusic() {
     const music = document.getElementById("bgMusic");
     if (music && music.paused) {
-      music.load(); // För Safari
-      music.play().catch(() => {});
+      music.play().catch((e) => {
+        console.log("🎵 Musikblockerad:", e);
+      });
     }
-    pyodide.runPythonAsync("start_game()");
+
+    // Starta spelet i nästa "tick" för att låta musiken triggas först
+    setTimeout(() => {
+      pyodide.runPythonAsync("start_game()");
+    }, 0);
   }
 
   </script>
