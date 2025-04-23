@@ -189,7 +189,8 @@ def stop_music():
         pass
 
 async def game_over():
-    global game_state
+    global game_state, game_loop_running
+    game_loop_running = False
     stop_music()
     try:
         document.getElementById("soundDeath").play()
@@ -399,8 +400,6 @@ async def update_start_toplist():
         document.getElementById("topList").innerHTML = f"<p>Fel: {e}</p>"
 
 # Event-bindningar
-start_proxy = create_proxy(start_game)
-document.getElementById("startButton").addEventListener("click", start_proxy)
 key_proxy = create_proxy(key_handler)
 document.addEventListener("keydown", key_proxy)
 asyncio.ensure_future(update_start_toplist())
