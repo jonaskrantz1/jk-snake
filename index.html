@@ -196,8 +196,9 @@ async def game_over():
     except:
         pass
     game_state = "gameover"
-    await asyncio.sleep(0.1)  # Liten paus för att hinna spela ljud
+    await asyncio.sleep(0.1)
     await check_highscore()
+    document.getElementById("startScreen").style.display = "flex"
 
 
 async def game_loop():
@@ -237,6 +238,8 @@ def draw_game_over():
     ctx.fillText("för att spela igen", WIDTH // 2 - 130, HEIGHT // 2 + 60)
 
     draw_ui()
+    document.getElementById("startScreen").style.display = "flex"
+
 
 
 def draw_snake():
