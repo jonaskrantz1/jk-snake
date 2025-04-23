@@ -58,10 +58,13 @@
         display: none;
       }
     }
+    py-script#startGameScript {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h1>Jonas Snakespel</h1>
+  <h1>Snake med Global Highscore</h1>
   <div id="startScreen">
     <button id="startButton" onclick="startWithMusic()">Klicka för att starta spelet</button>
     <div id="topList">Hämtar global highscore...</div>
@@ -80,6 +83,11 @@
   <audio id="soundDeath" src="death.wav"></audio>
   <audio id="bgMusic" src="music.mp3" loop></audio>
 
+<!-- ✅ Detta py-script kör start_game() när JS triggar det -->
+  <py-script id="startGameScript">
+start_game()
+  </py-script>
+  
   <py-script>
 import asyncio, random, time, json
 from js import document, window, fetch
@@ -406,32 +414,23 @@ asyncio.ensure_future(update_start_toplist())
   
   <!-- JavaScript för mobilvänlig styrning -->
   <script>
-    
-  async function startWithMusic() {
-    const music = document.getElementById("bgMusic");
-    if (music && music.paused) {
-      try {
-        await music.play();
-      } catch (e) {
-        console.log("🎵 Musikblockerad:", e);
+    async function startWithMusic() {
+      const music = document.getElementById("bgMusic");
+      if (music && music.paused) {
+        try {
+          await music.play();
+        } catch (e) {
+          console.log("🎵 Musikblockerad:", e);
+        }
+      }
+
+      const pyScript = document.getElementById("startGameScript");
+      if (pyScript) {
+        pyScript.run();
+      } else {
+        console.error("❌ Kunde inte hitta <py-script id='startGameScript'>");
       }
     }
-
-    // Vänta tills PyScript är redo genom att lyssna på custom-event
-    if (window.pyscript_loaded) {
-      pyodide.runPython("start_game()");
-    } else {
-      document.addEventListener("pyscript:ready", () => {
-        pyodide.runPython("start_game()");
-      }, { once: true });
-    }
-  }
-
-  // Sätt flagga när pyscript är redo
-  document.addEventListener("pyscript:ready", () => {
-    window.pyscript_loaded = true;
-  });
-  
   </script>
 </body>
 </html>
