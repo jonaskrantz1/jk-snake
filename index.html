@@ -57,6 +57,7 @@
 import asyncio, random, time, json
 from js import document, window, fetch
 from pyodide.ffi import create_proxy
+from pyodide.ffi import to_js  # Se till att detta är importerat i början
 
 # Globala spelvariabler
 WIDTH, HEIGHT, CELL = 600, 400, 20
@@ -79,13 +80,18 @@ counter = 0
 async def submit_highscore(name, score):
     url = "https://highscore.jonas-krantz-1.workers.dev/highscores"
     payload = json.dumps({"name": name, "score": score})
+
+    print("🔄 Försöker POSTa highscore till Cloudflare...")
     print("Payload:", payload)
-    response = await fetch(url, {
+
+    response = await fetch(url, to_js({
         "method": "POST",
         "headers": {"Content-Type": "application/json"},
         "body": payload
-    })
-    print("Eftersom du ser detta i devtools-console är POST gjord!")
+    }))
+
+    print("📬 Svar från servern:", response.status)
+
     result = await response.json()
     return result.to_py()
 
