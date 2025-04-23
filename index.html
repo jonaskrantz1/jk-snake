@@ -243,8 +243,13 @@ def update_snake():
     dx, dy = direction
     new_head = ((head_x + dx) % WIDTH, (head_y + dy) % HEIGHT)
     if new_head in player_snake or new_head in enemy_snake:
+        try:
+            document.getElementById("soundDeath").play()
+        except:
+            pass
         asyncio.ensure_future(game_over())
         return
+
     player_snake.insert(0, new_head)
     for f in foods[:]:
         if (f[0], f[1]) == new_head:
