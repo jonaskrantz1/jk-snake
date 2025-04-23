@@ -53,7 +53,6 @@
       padding: 10px 20px;
       margin: 5px;
     }
-    /* Dölj touchkontroller på enheter med mus */
     @media (hover: hover) {
       #touchControls {
         display: none;
@@ -62,7 +61,7 @@
   </style>
 </head>
 <body>
-  <h1>Snake med Global Highscore</h1>
+  <h1>Jonas Snakespel</h1>
   <div id="startScreen">
     <button id="startButton" onclick="startWithMusic()">Klicka för att starta spelet</button>
     <div id="topList">Hämtar global highscore...</div>
@@ -409,23 +408,22 @@ asyncio.ensure_future(update_start_toplist())
   <script>
     
   async function startWithMusic() {
-    const music = document.getElementById("bgMusic");
-    if (music && music.paused) {
-      try {
-        await music.play();
-      } catch (e) {
-        console.log("🎵 Musikblockerad:", e);
+      const music = document.getElementById("bgMusic");
+      if (music && music.paused) {
+        try {
+          await music.play();
+        } catch (e) {
+          console.log("🎵 Musikblockerad:", e);
+        }
+      }
+
+      if (typeof pyodideReadyPromise !== "undefined") {
+        await pyodideReadyPromise;
+        pyodide.runPython("start_game()");
+      } else {
+        console.error("❌ pyodideReadyPromise saknas – kunde inte starta spelet");
       }
     }
-
-    // Vänta tills pyodide är redo
-    if (typeof pyodideReadyPromise !== "undefined") {
-      await pyodideReadyPromise;
-      pyodide.runPython("start_game()");
-    } else {
-      console.error("❌ pyodideReadyPromise saknas – kunde inte starta spelet");
-    }
-  }
 
   </script>
 </body>
