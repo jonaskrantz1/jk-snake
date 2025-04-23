@@ -4,13 +4,14 @@
   <meta charset="utf-8" />
   <title>Snake med Global Highscore</title>
   <link rel="stylesheet" href="https://pyscript.net/releases/2025.3.1/core.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <script type="module" src="https://pyscript.net/releases/2025.3.1/core.js"></script>
   <style>
     body {
       background-color: #000;
       text-align: center;
       color: white;
-      font-family: Arial, sans-serif;
+      font-family: 'Press Start 2P', Arial, sans-serif;
       margin: 0;
       padding: 0;
     }
@@ -224,13 +225,17 @@ async def game_loop():
 
 def draw_game_over():
     ctx.fillStyle = "red"
-    ctx.font = "48px Arial"
-    ctx.fillText("GAME OVER", WIDTH // 2 - 140, HEIGHT // 2 - 20)
+    ctx.font = "16px 'Press Start 2P'"
+    ctx.fillText("GAME OVER", WIDTH // 2 - 120, HEIGHT // 2 - 40)
+
     ctx.fillStyle = "white"
-    ctx.font = "24px Arial"
-    ctx.fillText(f"Poäng: {player_score}", WIDTH // 2 - 60, HEIGHT // 2 + 20)
-    ctx.fillText("Tryck på start för att spela igen", WIDTH // 2 - 150, HEIGHT // 2 + 60)
+    ctx.font = "12px 'Press Start 2P'"
+    ctx.fillText(f"Poäng: {player_score}", WIDTH // 2 - 80, HEIGHT // 2)
+    ctx.fillText("Tryck på start", WIDTH // 2 - 100, HEIGHT // 2 + 40)
+    ctx.fillText("för att spela igen", WIDTH // 2 - 130, HEIGHT // 2 + 60)
+
     draw_ui()
+
 
 def draw_snake():
     for x, y in player_snake:
