@@ -18,6 +18,9 @@
       background-color: #222;
       border: 1px solid white;
       margin-top: 20px;
+      width: 100%;
+      max-width: 600px;
+      height: auto;
     }
     #startScreen {
       position: absolute;
@@ -39,6 +42,15 @@
     }
     #topList {
       font-size: 18px;
+      margin-top: 10px;
+    }
+    #touchControls {
+      margin-top: 20px;
+    }
+    #touchControls button {
+      font-size: 32px;
+      padding: 10px 20px;
+      margin: 5px;
     }
   </style>
 </head>
@@ -49,6 +61,15 @@
     <div id="topList">Hämtar global highscore...</div>
   </div>
   <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+  <!-- Touchkontroller för mobil -->
+  <div id="touchControls">
+    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowUp'}))">⬆️</button><br>
+    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowLeft'}))">⬅️</button>
+    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowDown'}))">⬇️</button>
+    <button onclick="window.dispatchEvent(new KeyboardEvent('keydown', {'key': 'ArrowRight'}))">➡️</button>
+  </div>
+
   <audio id="soundFood" src="pling.wav"></audio>
   <audio id="soundDeath" src="death.wav"></audio>
   <audio id="bgMusic" src="music.ogg" loop></audio>
