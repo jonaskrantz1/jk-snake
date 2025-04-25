@@ -1,3 +1,4 @@
+#https://jonaskrantz1.github.io/jk-snake/
 <!DOCTYPE html>
 <html>
 <head>
@@ -79,7 +80,6 @@
   <audio id="soundFood" src="pling.wav"></audio>
   <audio id="soundDeath" src="death.wav"></audio>
   <audio id="bgMusic" src="music.mp3" loop></audio>
-
   
   <py-script>
 import asyncio, random, time, json
@@ -407,39 +407,21 @@ asyncio.ensure_future(update_start_toplist())
   
  <!-- ✅ JavaScript som spelar musik + startar spelet -->
   <script>
-  async function startWithMusic() {
-    const music = document.getElementById("bgMusic");
-    if (music && music.paused) {
-      try {
-        await music.play();
-      } catch (e) {
-        console.log("🎵 Musikblockerad:", e);
-      }
-    }
-
-    // Vänta på pyscript:ready event
-    const ensureStart = () => {
-      try {
-        const startFn = pyscript.interpreter.globals.get("start_game");
-        if (startFn) {
-          startFn();
-        } else {
-          console.log("⏳ Väntar på att start_game ska laddas...");
-          setTimeout(ensureStart, 100);
+    async function startWithMusic() {
+      const music = document.getElementById("bgMusic");
+      if (music && music.paused) {
+        try {
+          await music.play();
+        } catch (e) {
+          console.log("🎵 Musikblockerad:", e);
         }
-      } catch (err) {
-        setTimeout(ensureStart, 100);
       }
-    };
 
-    if (window.pyscript?.interpreter?.globals?.get) {
-      ensureStart();
-    } else {
-      document.addEventListener("pyscript:ready", () => {
-        ensureStart();
-      });
+      // Dynamiskt skapa och köra PyScript som startar spelet
+      const code = document.createElement("py-script");
+      code.innerHTML = "start_game()";
+      document.body.appendChild(code);
     }
-  }
   </script>
 </body>
 </html>
