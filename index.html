@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://pyscript.net/releases/2025.3.1/core.css" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <script type="module" src="https://pyscript.net/releases/2025.3.1/core.js"></script>
+ # ---  CSS  ---
   <style>
     body {
       background-color: #000;
@@ -62,14 +63,14 @@
   </style>
 </head>
 <body>
-  <h1>Snake med Global Highscore</h1>
   <div id="startScreen">
     <button id="startButton" onclick="startWithMusic()">Klicka för att starta spelet</button>
-    <div id="topList">Hämtar global highscore...</div>
+    <div id="topList">Hämtar global highscore…</div>
   </div>
-
   <canvas id="gameCanvas" width="600" height="400"></canvas>
 
+ # Touchknappar för mobil
+ 
   <div id="touchControls">
     <button id="btnUp">⬆️</button><br>
     <button id="btnLeft">⬅️</button>
@@ -84,8 +85,7 @@
   <py-script>
 import asyncio, random, time, json
 from js import document, window, fetch
-from pyodide.ffi import create_proxy
-from pyodide.ffi import to_js  # Se till att detta är importerat i början
+from pyodide.ffi import create_proxy, to_js
 
 # Globala spelvariabler
 WIDTH, HEIGHT, CELL = 600, 400, 20
@@ -93,6 +93,7 @@ canvas = document.getElementById("gameCanvas")
 ctx = canvas.getContext("2d")
 game_state = "waiting"
 game_loop_running = False
+
 player_snake = [(WIDTH // 2, HEIGHT // 2)]
 player_length = 5
 player_score = 0
@@ -103,6 +104,7 @@ foods = [(random.randrange(0, WIDTH, CELL), random.randrange(0, HEIGHT, CELL), "
 direction = (CELL, 0)
 highscores = []
 counter = 0
+should_start = False
 
 #Mobilstyrning
 def touch_direction(dir):
@@ -180,6 +182,10 @@ async def check_highscore():
     print("✅ Svar från Worker:", highscores)
     await update_start_toplist()
 
+def trigger_start():
+    """Sätt flaggan som watcher plockar upp."""
+    global should_start
+    should_start = True
 
 
 def stop_music():
@@ -367,13 +373,10 @@ def start_game(evt=None):
     game_loop_running = False
     reset_game()
     document.getElementById("startScreen").style.display = "none"
-
-    # Ladda ljud så de spelas säkert senare (särskilt i Safari)
     for id in ["soundFood", "soundDeath", "bgMusic"]:
         el = document.getElementById(id)
         if el:
             el.load()
-
     asyncio.ensure_future(game_loop())
 
 def reset_game():
@@ -399,10 +402,22 @@ async def update_start_toplist():
     except Exception as e:
         document.getElementById("topList").innerHTML = f"<p>Fel: {e}</p>"
 
+# ----- NYTT: watcher som kör start_game() i rätt context -----
+async def _start_watcher():
+    global should_start
+    while True:
+        if should_start:
+            should_start = False
+            start_game()
+        await asyncio.sleep(0.1)
+
 # Event-bindningar
 key_proxy = create_proxy(key_handler)
 document.addEventListener("keydown", key_proxy)
 asyncio.ensure_future(update_start_toplist())
+
+# Kickstarta watchern
+asyncio.ensure_future(_start_watcher())
   </py-script>
   
  <!-- ✅ JavaScript som spelar musik + startar spelet -->
@@ -410,17 +425,13 @@ asyncio.ensure_future(update_start_toplist())
     async function startWithMusic() {
       const music = document.getElementById("bgMusic");
       if (music && music.paused) {
-        try {
-          await music.play();
-        } catch (e) {
-          console.log("🎵 Musikblockerad:", e);
-        }
+        try { await music.play(); }
+        catch(e){ console.log("🎵 Musikblockerad:", e) }
       }
-
-      // Dynamiskt skapa och köra PyScript som startar spelet
-      const code = document.createElement("py-script");
-      code.innerHTML = "start_game()";
-      document.body.appendChild(code);
+      // Kör trigger_start() i Python
+      const trigger = pyscript.interpreter.globals.get("trigger_start");
+      if (trigger) trigger();
+      else console.error("❌ trigger_start() ej hittad");
     }
   </script>
 </body>
