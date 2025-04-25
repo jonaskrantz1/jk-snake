@@ -298,20 +298,33 @@ def update_enemy():
     # Flytta fram huvudet
     enemy_snake.insert(0, new_head)
 
-    # Om ätit röd mat, väx
+    # 1) Kolla gul mat först
+    for f in foods[:]:
+        if (f[0], f[1]) == new_head and f[2] == "yellow":
+            # Väx lite grann (du kan justera till growth +=2 om du vill)
+            enemy_length += 1
+            foods.remove(f)
+            # Återintroducera en ny gul
+            foods.append((random.randrange(0, WIDTH, CELL),
+                          random.randrange(0, HEIGHT, CELL),
+                          "yellow"))
+            # Gå ut tidigt så vi inte kortar svansen
+            return
+
+    # 2) Kolla röd mat
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "red":
             enemy_length += 1
             foods.remove(f)
-            # nytt rött äpple
             foods.append((random.randrange(0, WIDTH, CELL),
                           random.randrange(0, HEIGHT, CELL),
                           "red"))
             return
 
-    # Annars: korta av svansen om vi är längre än current length
+    # 3) Om inget ätits: korta av svansen om vi är längre än vår length
     if len(enemy_snake) > enemy_length:
         enemy_snake.pop()
+
 
 def key_handler(e):
     global direction
