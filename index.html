@@ -5,8 +5,7 @@
   <title>Jonas Snakespel</title>
   <link rel="stylesheet" href="https://pyscript.net/releases/2025.3.1/core.css" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
-  <link rel="icon" href="favicon.png" type="image/png"> 
-  
+  <link rel="icon" href="favicon.png" type="image/png">
   <script type="module" src="https://pyscript.net/releases/2025.3.1/core.js"></script>
   <style>
     body {
@@ -68,7 +67,7 @@ from js import document, window, fetch
 from pyodide.ffi import create_proxy, to_js
 
 # ——————————————
-# 1) Lyssna på custom event
+# 1) Custom-start-event
 # ——————————————
 def _on_start(evt):
     start_game()
@@ -97,41 +96,38 @@ highscores = []
 counter = 0
 
 # ——————————————
-# Ny timer‐mekanism
+# 3) Timer‐mekanism
 # ——————————————
-# När spelet startar ligger time_left på 30 sekunder
-time_left = 30.0
-# sleep‐intervallet styr hastigheten; ju mindre desto snabbare spelet går
-speed_delay = 0.1
-# Hur mycket vi multiplicerar delay med när tiden går ut
-speed_multiplier = 0.9
+time_left = 20.0          # start på 20 sek
+speed_delay = 0.1         # ursprungs‐delay
+speed_multiplier = 0.8    # 20% snabbare vid varje 20‐sek‐intervall
 
 # ——————————————
-# 3) Mobilstyrning
+# 4) Mobilstyrning
 # ——————————————
 def touch_direction(dir):
     global direction
-    if game_state != "playing":
-        return
-    if dir=="up" and direction[1]==0:    direction=(0,-CELL)
-    if dir=="down" and direction[1]==0:  direction=(0,CELL)
-    if dir=="left" and direction[0]==0:  direction=(-CELL,0)
+    if game_state != "playing": return
+    if dir=="up"    and direction[1]==0: direction=(0,-CELL)
+    if dir=="down"  and direction[1]==0: direction=(0,CELL)
+    if dir=="left"  and direction[0]==0: direction=(-CELL,0)
     if dir=="right" and direction[0]==0: direction=(CELL,0)
 
 for btn, d in [("btnUp","up"),("btnDown","down"),("btnLeft","left"),("btnRight","right")]:
     document.getElementById(btn).addEventListener(
-      "click", create_proxy(lambda e, dir=d: touch_direction(dir))
+        "click", create_proxy(lambda e,dir=d: touch_direction(dir))
     )
 
 # ——————————————
-# 4) Highscore API
+# 5) Highscore‐API
 # ——————————————
 async def submit_highscore(name, score):
     url="https://highscore.jonas-krantz-1.workers.dev/highscores"
-    payload=json.dumps({"name":name,"score":score})
+    data=json.dumps({"name":name,"score":score})
     resp=await fetch(url, to_js({
-      "method":"POST","headers":{"Content-Type":"application/json"},
-      "body":payload
+        "method":"POST",
+        "headers":{"Content-Type":"application/json"},
+        "body":data
     }))
     return (await resp.json()).to_py()
 
@@ -142,8 +138,7 @@ async def get_highscores():
 async def update_start_toplist():
     global highscores
     try:
-        hs=await get_highscores()
-        highscores=hs
+        hs=await get_highscores(); highscores=hs
         html="<h3>Global Topplista:</h3>"
         for e in hs: html+=f"<p>{e['name']}: {e['score']}</p>"
         document.getElementById("topList").innerHTML=html
@@ -155,14 +150,13 @@ async def check_highscore():
     hs=await get_highscores()
     qualifies=len(hs)<10 or player_score>min(x["score"] for x in hs)
     if not qualifies:
-        highscores=hs
-        return
+        highscores=hs; return
     name=window.prompt("NY HIGH SCORE! Namn:") or "Anon"
     highscores=await submit_highscore(name, player_score)
     await update_start_toplist()
 
 # ——————————————
-# 5) Game-over & loop
+# 6) Game‐over & start
 # ——————————————
 def stop_music():
     try: document.getElementById("bgMusic").pause()
@@ -181,7 +175,6 @@ async def game_over():
 def start_game(evt=None):
     global game_state, counter, player_score, player_length
     global player_snake, enemy_snake, enemy_length, foods, direction, time_left, speed_delay
-    # Återställ allt vid start
     game_state="playing"
     counter=0
     player_snake[:] = [(WIDTH//2,HEIGHT//2)]
@@ -190,16 +183,18 @@ def start_game(evt=None):
     foods[:] = [(random.randrange(0,WIDTH,CELL),
                  random.randrange(0,HEIGHT,CELL),"red") for _ in range(2)]
     direction=(CELL,0)
-    time_left = 30.0       # nystart timer
-    speed_delay = 0.1      # återställ till ursprungsfart
+    time_left = 20.0      # återställ till 20 sek
+    speed_delay = 0.1     # återställ ursprungsfart
     document.getElementById("startScreen").style.display="none"
     try: document.getElementById("bgMusic").play()
     except: pass
-    # ladda bara ljudeffekter
     for id in ("soundFood","soundDeath"):
         el=document.getElementById(id)
         if el: el.load()
 
+# ——————————————
+# 7) Rita‐funktioner (oförändrade)
+# ——————————————
 def draw_game_over():
     ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
     ctx.fillStyle="red"; ctx.font="16px 'Press Start 2P'"
@@ -223,16 +218,11 @@ def draw_enemy():
     for x,y in enemy_snake:
         ctx.fillStyle="blue"; ctx.fillRect(x,y,CELL,CELL)
 
-# ——————————————
-# 7) Rita‐funktioner (oförändrade bortsett från timer)
-# ——————————————
 def draw_ui():
-    # Poäng
     ctx.fillStyle="white"; ctx.font="16px Arial"
     ctx.fillText(f"Poäng: {player_score}", 10, 20)
-    # Timer uppe till höger
+    # visa nedräkning
     ctx.fillText(f"Tid: {int(time_left)}", WIDTH-100, 20)
-    # Om gameover: rita topplista
     if game_state=="gameover":
         y=100; ctx.fillText("Topplista:",10,y)
         for e in highscores:
@@ -240,7 +230,7 @@ def draw_ui():
 
 def update_snake():
     global player_snake, player_score, player_length
-    hx,hy = player_snake[0]; dx,dy=direction
+    hx,hy=player_snake[0]; dx,dy=direction
     nh=((hx+dx)%WIDTH,(hy+dy)%HEIGHT)
     if nh in player_snake or nh in enemy_snake:
         asyncio.ensure_future(game_over()); return
@@ -254,11 +244,9 @@ def update_snake():
             foods.remove(f)
             if f[2]=="red":
                 foods.append((random.randrange(0,WIDTH,CELL),
-                              random.randrange(0,HEIGHT,CELL),
-                              "red"))
+                              random.randrange(0,HEIGHT,CELL),"red"))
             return
-    if len(player_snake)>player_length:
-        player_snake.pop()
+    if len(player_snake)>player_length: player_snake.pop()
 
 def get_valid_enemy_move(h):
     dirs=[(CELL,0),(-CELL,0),(0,CELL),(0,-CELL)]
@@ -283,8 +271,7 @@ def update_enemy():
         if (f[0],f[1])==nh and f[2]=="red":
             enemy_length+=1; foods.remove(f)
             foods.append((random.randrange(0,WIDTH,CELL),
-                          random.randrange(0,HEIGHT,CELL),
-                          "red"))
+                          random.randrange(0,HEIGHT,CELL),"red"))
             return
     if len(enemy_snake)>enemy_length: enemy_snake.pop()
 
@@ -300,40 +287,36 @@ def key_handler(e):
 document.addEventListener("keydown", create_proxy(key_handler))
 
 # ——————————————
-# 6) Endast en evig loop + highscore-uppdatering
+# 8) Evig loop + nedräkning
 # ——————————————
 async def game_loop():
     global counter, time_left, speed_delay
     while True:
         if game_state=="playing":
-            # Räkna ner timern
+            # nedräkning
             time_left -= speed_delay
-            # När timern går ut: öka farten och återställ timern
             if time_left <= 0:
                 speed_delay *= speed_multiplier
-                time_left = 30.0
-            # Rita spel
+                time_left = 20.0
+            # rita
             ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
             update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
-            if counter % 2 == 0:
-                update_enemy()
-            if not any(f[2]=="yellow" for f in foods) and random.random() < 0.01:
+            if counter % 2==0: update_enemy()
+            if not any(f[2]=="yellow" for f in foods) and random.random()<0.01:
                 foods.append((random.randrange(0,WIDTH,CELL),
                               random.randrange(0,HEIGHT,CELL),"yellow"))
-            counter += 1
+            counter+=1
         await asyncio.sleep(speed_delay)
 
-# Starta bara en gång:
 asyncio.ensure_future(update_start_toplist())
 asyncio.ensure_future(game_loop())
   </py-script>
 
   <script>
-  async function startWithMusic() {
-    const music = document.getElementById("bgMusic");
-    if (music && music.paused) {
-      try { await music.play() }
-      catch(e){ console.log("🎵 Musikblockerad:", e); }
+  async function startWithMusic(){
+    let music=document.getElementById("bgMusic");
+    if(music&&music.paused){
+      try{await music.play()}catch(e){console.log("🎵",e)}
     }
     document.dispatchEvent(new Event("startGame"));
   }
