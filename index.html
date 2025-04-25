@@ -85,6 +85,14 @@
 import asyncio, random, time, json
 from js import document, window, fetch
 from pyodide.ffi import create_proxy, to_js
+from js import document
+from pyodide.ffi import create_proxy
+
+# Lyssna på vårt custom event och anropa start_game direkt
+def _on_start(evt):
+    start_game()  # kör ditt vanliga start_game
+
+document.addEventListener("startGame", create_proxy(_on_start))
 
 # Globala spelvariabler
 WIDTH, HEIGHT, CELL = 600, 400, 20
@@ -428,14 +436,14 @@ asyncio.ensure_future(_start_watcher())
   async function startWithMusic() {
     const music = document.getElementById("bgMusic");
     if (music && music.paused) {
-      try { await music.play(); }
-      catch(e){ console.log("🎵 Musikblockerad:", e) }
+      try { 
+        await music.play();
+      } catch(e){
+        console.log("🎵 Musikblockerad:", e);
+      }
     }
-    if (typeof window.trigger_start === "function") {
-      window.trigger_start();
-    } else {
-      console.error("❌ window.trigger_start saknas");
-    }
+    // Skicka ett DOM-event som Python lyssnar på
+    document.dispatchEvent(new Event("startGame"));
   }
   </script>
 </body>
