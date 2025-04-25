@@ -100,7 +100,7 @@ counter = 0
 # ——————————————
 time_left = 20.0          # start på 20 sek
 speed_delay = 0.1         # ursprungs‐delay
-speed_multiplier = 0.8    # 20% snabbare vid varje 20‐sek‐intervall
+speed_multiplier = 0.9    # 10% snabbare vid varje 20‐sek‐intervall
 
 # ——————————————
 # 4) Mobilstyrning
@@ -248,32 +248,70 @@ def update_snake():
             return
     if len(player_snake)>player_length: player_snake.pop()
 
-def get_valid_enemy_move(h):
-    dirs=[(CELL,0),(-CELL,0),(0,CELL),(0,-CELL)]
-    random.shuffle(dirs)
-    safe=lambda p: p not in enemy_snake and p not in player_snake
-    tgt=next(((fx,fy) for fx,fy,k in foods if k=="red"),None)
-    if tgt:
-        dirs.sort(key=lambda d: abs((h[0]+d[0])%WIDTH-tgt[0])+abs((h[1]+d[1])%HEIGHT-tgt[1]))
-    for dx,dy in dirs:
-        np=((h[0]+dx)%WIDTH,(h[1]+dy)%HEIGHT)
-        if safe(np): return dx,dy
-    return dirs[0]
+def get_valid_enemy_move(head):
+    # Tillåt att gå in på gamla svansen (den fälls ju av direkt om ingen mat äts),
+    # men aldrig i resten av kroppen eller i spelarens kropp:
+    body_except_tail = enemy_snake[:-1]
+
+    def safe(pos):
+        return pos not in body_except_tail and pos not in player_snake
+
+    # 1. Hitta gul mat om det finns
+    yellow_target = next(((fx, fy) for fx, fy, kind in foods if kind == "yellow"), None)
+    # 2. Annars röd
+    red_target    = next(((fx, fy) for fx, fy, kind in foods if kind == "red"), None)
+    target = yellow_target or red_target
+
+    # Lista alla möjliga drag
+    directions = [(CELL, 0), (-CELL, 0), (0, CELL), (0, -CELL)]
+    # Om vi har ett target, sortera så att de drag som minskar avståndet kommer först
+    if target:
+        tx, ty = target
+        def dist_after_move(d):
+            nx = (head[0] + d[0]) % WIDTH
+            ny = (head[1] + d[1]) % HEIGHT
+            return abs(nx - tx) + abs(ny - ty)
+        directions.sort(key=dist_after_move)
+
+    # Välj det första säkra draget
+    for dx, dy in directions:
+        new_pos = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
+        if safe(new_pos):
+            return dx, dy
+
+    # Inga säkra drag → ät svansen, så géna krock om det är sista utvägen
+    return directions[0]
 
 def update_enemy():
     global enemy_snake, enemy_length
-    head=enemy_snake[0]; dx,dy=get_valid_enemy_move(head)
-    nh=((head[0]+dx)%WIDTH,(head[1]+dy)%HEIGHT)
-    if nh in enemy_snake or nh in player_snake:
-        enemy_snake[:] = [(300,200)]; enemy_length=1; return
-    enemy_snake.insert(0,nh)
+
+    head = enemy_snake[0]
+    dx, dy = get_valid_enemy_move(head)
+    new_head = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
+
+    # Om vi trots allt hamnar i oss själva eller spelaren → omstart
+    if new_head in enemy_snake or new_head in player_snake:
+        enemy_snake[:] = [(300, 200)]
+        enemy_length = 1
+        return
+
+    # Flytta fram huvudet
+    enemy_snake.insert(0, new_head)
+
+    # Om ätit röd mat, väx
     for f in foods[:]:
-        if (f[0],f[1])==nh and f[2]=="red":
-            enemy_length+=1; foods.remove(f)
-            foods.append((random.randrange(0,WIDTH,CELL),
-                          random.randrange(0,HEIGHT,CELL),"red"))
+        if (f[0], f[1]) == new_head and f[2] == "red":
+            enemy_length += 1
+            foods.remove(f)
+            # nytt rött äpple
+            foods.append((random.randrange(0, WIDTH, CELL),
+                          random.randrange(0, HEIGHT, CELL),
+                          "red"))
             return
-    if len(enemy_snake)>enemy_length: enemy_snake.pop()
+
+    # Annars: korta av svansen om vi är längre än current length
+    if len(enemy_snake) > enemy_length:
+        enemy_snake.pop()
 
 def key_handler(e):
     global direction
