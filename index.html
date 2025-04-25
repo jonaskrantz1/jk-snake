@@ -402,6 +402,8 @@ async def update_start_toplist():
         document.getElementById("topList").innerHTML = f"<p>Fel: {e}</p>"
 
 # ----- NYTT: watcher som kör start_game() i rätt context -----
+window.trigger_start = create_proxy(lambda: trigger_start())
+
 async def _start_watcher():
     global should_start
     while True:
@@ -409,6 +411,8 @@ async def _start_watcher():
             should_start = False
             start_game()
         await asyncio.sleep(0.1)
+
+asyncio.ensure_future(_start_watcher())
 
 # Event-bindningar
 key_proxy = create_proxy(key_handler)
@@ -421,17 +425,18 @@ asyncio.ensure_future(_start_watcher())
   
  <!-- ✅ JavaScript som spelar musik + startar spelet -->
   <script>
-    async function startWithMusic() {
-      const music = document.getElementById("bgMusic");
-      if (music && music.paused) {
-        try { await music.play(); }
-        catch(e){ console.log("🎵 Musikblockerad:", e) }
-      }
-      // Kör trigger_start() i Python
-      const trigger = pyscript.interpreter.globals.get("trigger_start");
-      if (trigger) trigger();
-      else console.error("❌ trigger_start() ej hittad");
+  async function startWithMusic() {
+    const music = document.getElementById("bgMusic");
+    if (music && music.paused) {
+      try { await music.play(); }
+      catch(e){ console.log("🎵 Musikblockerad:", e) }
     }
+    if (typeof window.trigger_start === "function") {
+      window.trigger_start();
+    } else {
+      console.error("❌ window.trigger_start saknas");
+    }
+  }
   </script>
 </body>
 </html>
