@@ -93,6 +93,7 @@ foods = [(random.randrange(0, WIDTH, CELL),
           "red") for _ in range(2)]
 direction = (CELL, 0)
 highscores = []
+level = 1
 counter = 0
 
 # ——————————————
@@ -100,7 +101,7 @@ counter = 0
 # ——————————————
 time_left = 20.0          # start på 20 sek
 speed_delay = 0.1         # ursprungs‐delay
-speed_multiplier = 0.9    # 10% snabbare vid varje 20‐sek‐intervall
+speed_multiplier = 0.85   # 15% snabbare vid varje 20‐sek‐intervall
 
 # ——————————————
 # 4) Mobilstyrning
@@ -174,7 +175,8 @@ async def game_over():
 
 def start_game(evt=None):
     global game_state, counter, player_score, player_length
-    global player_snake, enemy_snake, enemy_length, foods, direction, time_left, speed_delay
+    global player_snake, enemy_snake, enemy_length, foods, direction
+    global time_left, speed_delay, level
     game_state="playing"
     counter=0
     player_snake[:] = [(WIDTH//2,HEIGHT//2)]
@@ -185,6 +187,7 @@ def start_game(evt=None):
     direction=(CELL,0)
     time_left = 20.0      # återställ till 20 sek
     speed_delay = 0.1     # återställ ursprungsfart
+    level = 1             # återställ level 
     document.getElementById("startScreen").style.display="none"
     try: document.getElementById("bgMusic").play()
     except: pass
@@ -223,6 +226,9 @@ def draw_ui():
     ctx.fillText(f"Poäng: {player_score}", 10, 20)
     # visa nedräkning
     ctx.fillText(f"Tid: {int(time_left)}", WIDTH-100, 20)
+    # Level under poäng
+    ctx.fillText(f"Level: {level}", 10, 40)
+    # Topplista vid game over
     if game_state=="gameover":
         y=100; ctx.fillText("Topplista:",10,y)
         for e in highscores:
@@ -341,7 +347,7 @@ document.addEventListener("keydown", create_proxy(key_handler))
 # 8) Evig loop + nedräkning
 # ——————————————
 async def game_loop():
-    global counter, time_left, speed_delay
+    global counter, time_left, speed_delay, level
     while True:
         if game_state=="playing":
             # nedräkning
@@ -349,6 +355,7 @@ async def game_loop():
             if time_left <= 0:
                 speed_delay *= speed_multiplier
                 time_left = 20.0
+                level += 1  
             # rita
             ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
             update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
