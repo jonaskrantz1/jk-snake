@@ -97,6 +97,16 @@ highscores = []
 counter = 0
 
 # ——————————————
+# Ny timer‐mekanism
+# ——————————————
+# När spelet startar ligger time_left på 30 sekunder
+time_left = 30.0
+# sleep‐intervallet styr hastigheten; ju mindre desto snabbare spelet går
+speed_delay = 0.1
+# Hur mycket vi multiplicerar delay med när tiden går ut
+speed_multiplier = 0.9
+
+# ——————————————
 # 3) Mobilstyrning
 # ——————————————
 def touch_direction(dir):
@@ -169,20 +179,23 @@ async def game_over():
     document.getElementById("startScreen").style.display="flex"
 
 def start_game(evt=None):
-    global game_state, counter, player_score, player_length, player_snake, enemy_snake, enemy_length, foods, direction
+    global game_state, counter, player_score, player_length
+    global player_snake, enemy_snake, enemy_length, foods, direction, time_left, speed_delay
+    # Återställ allt vid start
     game_state="playing"
     counter=0
-    player_snake[:] = [(WIDTH//2, HEIGHT//2)]
+    player_snake[:] = [(WIDTH//2,HEIGHT//2)]
     player_length=5; player_score=0
     enemy_snake[:] = [(300,200)]; enemy_length=1
     foods[:] = [(random.randrange(0,WIDTH,CELL),
-                 random.randrange(0,HEIGHT,CELL),
-                 "red") for _ in range(2)]
+                 random.randrange(0,HEIGHT,CELL),"red") for _ in range(2)]
     direction=(CELL,0)
+    time_left = 30.0       # nystart timer
+    speed_delay = 0.1      # återställ till ursprungsfart
     document.getElementById("startScreen").style.display="none"
     try: document.getElementById("bgMusic").play()
     except: pass
-    # ladda bara ljudeffekter:
+    # ladda bara ljudeffekter
     for id in ("soundFood","soundDeath"):
         el=document.getElementById(id)
         if el: el.load()
@@ -210,12 +223,18 @@ def draw_enemy():
     for x,y in enemy_snake:
         ctx.fillStyle="blue"; ctx.fillRect(x,y,CELL,CELL)
 
+# ——————————————
+# 7) Rita‐funktioner (oförändrade bortsett från timer)
+# ——————————————
 def draw_ui():
+    # Poäng
     ctx.fillStyle="white"; ctx.font="16px Arial"
-    ctx.fillText(f"Poäng: {player_score}",10,20)
+    ctx.fillText(f"Poäng: {player_score}", 10, 20)
+    # Timer uppe till höger
+    ctx.fillText(f"Tid: {int(time_left)}", WIDTH-100, 20)
+    # Om gameover: rita topplista
     if game_state=="gameover":
-        y=100
-        ctx.fillText("Topplista:",10,y)
+        y=100; ctx.fillText("Topplista:",10,y)
         for e in highscores:
             y+=20; ctx.fillText(f"{e['name']}: {e['score']}",10,y)
 
@@ -284,18 +303,25 @@ document.addEventListener("keydown", create_proxy(key_handler))
 # 6) Endast en evig loop + highscore-uppdatering
 # ——————————————
 async def game_loop():
-    global counter
+    global counter, time_left, speed_delay
     while True:
         if game_state=="playing":
+            # Räkna ner timern
+            time_left -= speed_delay
+            # När timern går ut: öka farten och återställ timern
+            if time_left <= 0:
+                speed_delay *= speed_multiplier
+                time_left = 30.0
+            # Rita spel
             ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
             update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
-            if counter%2==0: update_enemy()
-            if not any(f[2]=="yellow" for f in foods) and random.random()<0.01:
+            if counter % 2 == 0:
+                update_enemy()
+            if not any(f[2]=="yellow" for f in foods) and random.random() < 0.01:
                 foods.append((random.randrange(0,WIDTH,CELL),
-                              random.randrange(0,HEIGHT,CELL),
-                              "yellow"))
-            counter+=1
-        await asyncio.sleep(0.1)
+                              random.randrange(0,HEIGHT,CELL),"yellow"))
+            counter += 1
+        await asyncio.sleep(speed_delay)
 
 # Starta bara en gång:
 asyncio.ensure_future(update_start_toplist())
