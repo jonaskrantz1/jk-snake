@@ -70,6 +70,8 @@ highscores = []
 MAX_HIGHSCORES = 20
 level = 1
 counter = 0
+yellow_timer = 0.0
+yellow_next_spawn = random.uniform(5, 15)
 
 
 
@@ -180,6 +182,8 @@ def start_game(evt=None):
     level = 1
     time_left = 20.0
     speed_delay = 0.1
+    yellow_timer = 0.0
+    yellow_next_spawn = random.uniform(5, 15)
     rainbow_exists = False
     document.getElementById("startScreen").style.display = "none"
     try: document.getElementById("bgMusic").play()
@@ -286,7 +290,8 @@ def update_enemy():
                 rainbow_exists = False
             else:
                 enemy_length += 1
-                spawn_food(f[2])
+                if f[2] == "red":
+                spawn_food("red")
             foods.remove(f)
             break
 
@@ -329,7 +334,8 @@ def update_snake():
             try: document.getElementById("soundFood").play()
             except: pass
             foods.remove(f)
-            spawn_food(f[2])
+            if f[2] == "red":
+            spawn_food("red")
             return
 
     if len(player_snake) > player_length:
@@ -351,24 +357,41 @@ document.addEventListener("keydown", create_proxy(key_handler))
 # Main game loop
 async def game_loop():
     global counter, time_left, speed_delay, level, rainbow_exists
+    global yellow_timer, yellow_next_spawn
+
     while True:
         if game_state == 'playing':
             time_left -= speed_delay
+
             if time_left <= 0:
                 speed_delay *= speed_multiplier
                 time_left = 20.0
                 level += 1
                 if level % 3 == 0 and not rainbow_exists:
-                    spawn_food('rainbow'); rainbow_exists = True
-                    try: document.getElementById("rainbowLoop").play()
-                    except: pass
-            ctx.fillStyle = "black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
-            update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
-            if counter % 2 == 0: update_enemy()
-            if not any(f[2]=='yellow' for f in foods) and random.random() < 0.01:
-                spawn_food('yellow')
+                    spawn_food('rainbow')
+                    rainbow_exists = True
+                    try:
+                        document.getElementById("rainbowLoop").play()
+                    except:
+                        pass
+
+            update_snake()
+            if counter % 2 == 0:
+                update_enemy()
+
+            # Gul mat: bara om ingen finns, och slumpad timer har gått ut
+            if not any(f[2] == 'yellow' for f in foods):
+                yellow_timer += speed_delay
+                if yellow_timer >= yellow_next_spawn:
+                    spawn_food('yellow')
+                    yellow_timer = 0.0
+                    yellow_next_spawn = random.uniform(5, 15)
+
+            draw()
             counter += 1
+
         await asyncio.sleep(speed_delay)
+
 
 asyncio.ensure_future(update_start_toplist())
 asyncio.ensure_future(game_loop())
