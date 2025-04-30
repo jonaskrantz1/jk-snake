@@ -259,54 +259,61 @@ def update_snake():
     dx, dy = direction
     new_head = ((head_x + dx) % WIDTH, (head_y + dy) % HEIGHT)
 
-    # self‐krock etc...
     if new_head in player_snake or new_head in enemy_snake:
         asyncio.ensure_future(game_over())
         return
 
     player_snake.insert(0, new_head)
 
-    # rainbow först
+    # 1) Rainbow‐mat först
     for f in foods[:]:
-    if (f[0], f[1]) == new_head and f[2] == "rainbow":
-        player_length = max(1, player_length // 2)
-        player_snake[:] = player_snake[:player_length]
+        if (f[0], f[1]) == new_head and f[2] == "rainbow":
+            # halvera längden
+            player_length = max(1, player_length // 2)
+            player_snake[:] = player_snake[:player_length]
 
-        # pling-ektet
-        try:
-            document.getElementById("soundRainbowEat").play()
-        except:
-            pass
+            # spela pling‐ljud
+            try:
+                document.getElementById("soundRainbowEat").play()
+            except:
+                pass
 
-        # ta bort regnbågsmaten
-        foods.remove(f)
-        rainbow_exists = False
+            # ta bort maten
+            foods.remove(f)
+            rainbow_exists = False
 
-        # stoppa loopen
-        try:
-            loop = document.getElementById("rainbowLoop")
-            loop.pause()
-            loop.currentTime = 0
-        except:
-            pass
+            # stoppa loopen
+            try:
+                loop = document.getElementById("rainbowLoop")
+                loop.pause()
+                loop.currentTime = 0
+            except:
+                pass
 
-        return
-    # gul/röd som tidigare
+            return  # se till att vi inte kör resten av funktionen
+
+    # 2) Gul och röd mat som tidigare
     for f in foods[:]:
         if (f[0], f[1]) == new_head:
             player_length += 1
             player_score += 10 if f[2] == "red" else 30
-            try: document.getElementById("soundFood").play()
-            except: pass
+            try:
+                document.getElementById("soundFood").play()
+            except:
+                pass
             foods.remove(f)
             if f[2] == "red":
-                foods.append((random.randrange(0, WIDTH, CELL),
-                              random.randrange(0, HEIGHT, CELL),
-                              "red"))
+                foods.append((
+                    random.randrange(0, WIDTH, CELL),
+                    random.randrange(0, HEIGHT, CELL),
+                    "red"
+                ))
             return
 
+    # 3) Krymp svansen om vi är längre än player_length
     if len(player_snake) > player_length:
         player_snake.pop()
+
 
 def get_valid_enemy_move(head):
     body_except_tail = enemy_snake[:-1]
@@ -352,52 +359,50 @@ def update_enemy():
 
     enemy_snake.insert(0, new_head)
 
-    # 1) rainbow‐mat
+    # 1) Rainbow‐mat
     for f in foods[:]:
-    if (f[0], f[1]) == new_head and f[2] == "rainbow":
-        enemy_length = max(1, enemy_length // 2)
-        enemy_snake[:] = enemy_snake[:enemy_length]
+        if (f[0], f[1]) == new_head and f[2] == "rainbow":
+            enemy_length = max(1, enemy_length // 2)
+            enemy_snake[:] = enemy_snake[:enemy_length]
+            try:
+                document.getElementById("soundRainbowEat").play()
+            except:
+                pass
+            foods.remove(f)
+            rainbow_exists = False
+            try:
+                loop = document.getElementById("rainbowLoop")
+                loop.pause()
+                loop.currentTime = 0
+            except:
+                pass
+            return
 
-        # pling för fienden
-        try:
-            document.getElementById("soundRainbowEat").play()
-        except:
-            pass
-
-        foods.remove(f)
-        rainbow_exists = False
-
-        # stoppa loopen
-        try:
-            loop = document.getElementById("rainbowLoop")
-            loop.pause()
-            loop.currentTime = 0
-        except:
-            pass
-
-        return
-
-    # 2) gul
+    # 2) Gul mat
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "yellow":
             enemy_length += 1
             foods.remove(f)
-            foods.append((random.randrange(0, WIDTH, CELL),
-                          random.randrange(0, HEIGHT, CELL),
-                          "yellow"))
+            foods.append((
+                random.randrange(0, WIDTH, CELL),
+                random.randrange(0, HEIGHT, CELL),
+                "yellow"
+            ))
             return
 
-    # 3) röd
+    # 3) Röd mat
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "red":
             enemy_length += 1
             foods.remove(f)
-            foods.append((random.randrange(0, WIDTH, CELL),
-                          random.randrange(0, HEIGHT, CELL),
-                          "red"))
+            foods.append((
+                random.randrange(0, WIDTH, CELL),
+                random.randrange(0, HEIGHT, CELL),
+                "red"
+            ))
             return
 
-    # 4) tail‐pop
+    # 4) Krymp svansen
     if len(enemy_snake) > enemy_length:
         enemy_snake.pop()
 
