@@ -63,12 +63,14 @@ player_score = 0
 enemy_snake = [(300, 200)]
 enemy_length = 1
 direction = (CELL, 0)
+pending_direction = direction
+last_direction = direction  # håller reda på senaste riktning
 foods = []
 highscores = []
 MAX_HIGHSCORES = 20
 level = 1
 counter = 0
-last_direction = direction  # håller reda på senaste riktning
+
 
 
 time_left = 20.0
@@ -162,7 +164,7 @@ async def game_over():
     document.getElementById("startScreen").style.display = "flex"
 
 def start_game(evt=None):
-    global game_state, counter, player_length, player_score, enemy_length, direction, level, time_left, speed_delay, rainbow_exists
+    global game_state, counter, player_score, player_length, enemy_length, direction, pending_direction, last_direction, level, time_left, speed_delay
     game_state = "playing"
     counter = 0
     player_snake[:] = [(WIDTH//2, HEIGHT//2)]
