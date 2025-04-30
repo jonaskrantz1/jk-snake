@@ -162,7 +162,7 @@ async def game_over():
     document.getElementById("startScreen").style.display = "flex"
 
 def start_game(evt=None):
-    global game_state, counter, player_score, player_length, direction, pending_direction, level, time_left, speed_delay
+    global game_state, counter, player_score, player_length, direction, pending_direction, level, time_left, speed_delay, enemy_length
     game_state = "playing"
     counter = 0
     player_snake[:] = [(WIDTH//2, HEIGHT//2)]
