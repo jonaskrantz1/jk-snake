@@ -231,37 +231,6 @@ def draw_ui():
 
 # Update functions
 
-def update_snake():
-    global player_length, player_score, rainbow_exists
-    hx, hy = player_snake[0]; dx, dy = direction
-    nh = ((hx+dx)%WIDTH, (hy+dy)%HEIGHT)
-    if nh in player_snake or nh in enemy_snake:
-        asyncio.ensure_future(game_over()); return
-    player_snake.insert(0, nh)
-    for f in foods[:]:
-        if (f[0], f[1]) == nh and f[2] == 'rainbow':
-            player_length = 5
-            player_snake[:] = player_snake[:player_length]
-            try: document.getElementById("soundRainbowEat").play()
-            except: pass
-            foods.remove(f); rainbow_exists = False
-            try:
-                loop = document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime = 0
-            except: pass
-            return
-    for f in foods[:]:
-        if (f[0], f[1]) == nh:
-            player_length += 1
-            player_score += 10 if f[2] == 'red' else 30
-            try: document.getElementById("soundFood").play()
-            except: pass
-            kind = f[2]
-            foods.remove(f)
-            spawn_food(kind)
-            return
-    if len(player_snake) > player_length:
-        player_snake.pop()
-
 def update_enemy():
     global enemy_snake, enemy_length, rainbow_exists
     head = enemy_snake[0]
@@ -323,7 +292,7 @@ def update_snake():
         direction = pending_direction
 
     hx, hy = player_snake[0]
-    new = ((hx+direction[0]) % WIDTH, (hy+direction[1]) % HEIGHT)
+    new = ((hx + direction[0]) % WIDTH, (hy + direction[1]) % HEIGHT)
     last_direction = direction  # uppdatera senast använda riktning
 
     if new in player_snake or new in enemy_snake:
@@ -359,14 +328,16 @@ def update_snake():
     if len(player_snake) > player_length:
         player_snake.pop()
 
-def key_handler(e):
-    global direction
-    if game_state != 'playing': return
+
+ddef key_handler(e):
+    global pending_direction
+    if game_state != 'playing':
+        return
     k = e.key
-    if k=='ArrowUp' and direction[1]==0: direction=(0,-CELL)
-    if k=='ArrowDown' and direction[1]==0: direction=(0,CELL)
-    if k=='ArrowLeft' and direction[0]==0: direction=(-CELL,0)
-    if k=='ArrowRight' and direction[0]==0: direction=(CELL,0)
+    if k == 'ArrowUp': pending_direction = (0, -CELL)
+    if k == 'ArrowDown': pending_direction = (0, CELL)
+    if k == 'ArrowLeft': pending_direction = (-CELL, 0)
+    if k == 'ArrowRight': pending_direction = (CELL, 0)
 
 document.addEventListener("keydown", create_proxy(key_handler))
 
