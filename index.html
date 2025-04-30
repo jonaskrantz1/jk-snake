@@ -82,11 +82,11 @@ ctx = canvas.getContext("2d")
 game_state = "waiting"
 
 player_snake = [(WIDTH//2, HEIGHT//2)]
-player_length = 5
+player_length = 2
 player_score = 0
 
 enemy_snake = [(300, 200)]
-enemy_length = 1
+enemy_length = 2
 
 foods = [(random.randrange(0, WIDTH, CELL),
           random.randrange(0, HEIGHT, CELL),
@@ -103,6 +103,7 @@ counter = 0
 time_left = 20.0          # start på 20 sek
 speed_delay = 0.1         # ursprungs‐delay
 speed_multiplier = 0.85   # 15% snabbare vid varje 20‐sek‐intervall
+rainbow_exists = False    # regnbågskakan
 
 # ——————————————
 # 4) Mobilstyrning
@@ -218,10 +219,20 @@ def draw_snake():
     for x,y in player_snake:
         ctx.fillStyle="lime"; ctx.fillRect(x,y,CELL,CELL)
 
+# ——————————————
+# 3) Rita regnbågs‐mat med blinkande färg i draw_food()
+# ——————————————
 def draw_food():
-    for x,y,k in foods:
-        ctx.fillStyle="gold" if k=="yellow" else "red"
-        ctx.fillRect(x,y,CELL,CELL)
+    for x, y, kind in foods:
+        if kind == "rainbow":
+            # växlande hue
+            hue = int((time.time() * 200) % 360)
+            ctx.fillStyle = f"hsl({hue},100%,50%)"
+        elif kind == "yellow":
+            ctx.fillStyle = "gold"
+        else:
+            ctx.fillStyle = "red"
+        ctx.fillRect(x, y, CELL, CELL)
 
 def draw_enemy():
     for x,y in enemy_snake:
@@ -241,94 +252,106 @@ def draw_ui():
             ctx.fillText(f"{i}. {entry['name']}: {entry['score']}", 10, y)
 
 def update_snake():
-    global player_snake, player_score, player_length
-    hx,hy=player_snake[0]; dx,dy=direction
-    nh=((hx+dx)%WIDTH,(hy+dy)%HEIGHT)
-    if nh in player_snake or nh in enemy_snake:
-        asyncio.ensure_future(game_over()); return
-    player_snake.insert(0,nh)
+    global player_snake, player_score, player_length, rainbow_exists
+    head_x, head_y = player_snake[0]
+    dx, dy = direction
+    new_head = ((head_x + dx) % WIDTH, (head_y + dy) % HEIGHT)
+
+    # self‐krock etc...
+    if new_head in player_snake or new_head in enemy_snake:
+        asyncio.ensure_future(game_over())
+        return
+
+    player_snake.insert(0, new_head)
+
+    # rainbow först
     for f in foods[:]:
-        if (f[0],f[1])==nh:
-            player_length+=1
-            player_score+=10 if f[2]=="red" else 30
+        if (f[0], f[1]) == new_head and f[2] == "rainbow":
+            player_length = max(1, player_length // 2)
+            foods.remove(f)
+            rainbow_exists = False
+            return
+
+    # gul/röd som tidigare
+    for f in foods[:]:
+        if (f[0], f[1]) == new_head:
+            player_length += 1
+            player_score += 10 if f[2] == "red" else 30
             try: document.getElementById("soundFood").play()
             except: pass
             foods.remove(f)
-            if f[2]=="red":
-                foods.append((random.randrange(0,WIDTH,CELL),
-                              random.randrange(0,HEIGHT,CELL),"red"))
+            if f[2] == "red":
+                foods.append((random.randrange(0, WIDTH, CELL),
+                              random.randrange(0, HEIGHT, CELL),
+                              "red"))
             return
-    if len(player_snake)>player_length: player_snake.pop()
+
+    if len(player_snake) > player_length:
+        player_snake.pop()
 
 def get_valid_enemy_move(head):
-    # Tillåt att gå in i sista segmentet (svansen), men inte i kroppen eller spelarens kropp
     body_except_tail = enemy_snake[:-1]
     def safe(pos):
         return pos not in body_except_tail and pos not in player_snake
 
-    # 1. Leta gul mat först
-    yellow = [f for f in foods if f[2] == "yellow"]
-    if yellow:
-        target = yellow[0][:2]
+    # Prioritetsordning: rainbow → yellow → närmaste red
+    rainbow = [f for f in foods if f[2] == "rainbow"]
+    yellow  = [f for f in foods if f[2] == "yellow"]
+    if rainbow:
+        tx, ty = rainbow[0][:2]
+    elif yellow:
+        tx, ty = yellow[0][:2]
     else:
-        # 2. Leta närmaste röda
-        red = [f for f in foods if f[2] == "red"]
-        if red:
-            # Välj närmaste röda baserat på Manhattan-avstånd
-            red.sort(key=lambda f: abs(f[0] - head[0]) + abs(f[1] - head[1]))
-            target = red[0][:2]
-        else:
-            target = None
+        reds = [f for f in foods if f[2] == "red"]
+        reds.sort(key=lambda f: abs(f[0] - head[0]) + abs(f[1] - head[1]))
+        tx, ty = (reds[0][0], reds[0][1]) if reds else (None, None)
 
     directions = [(CELL, 0), (-CELL, 0), (0, CELL), (0, -CELL)]
-
-    if target:
-        tx, ty = target
-        def dist_after_move(d):
-            nx = (head[0] + d[0]) % WIDTH
-            ny = (head[1] + d[1]) % HEIGHT
-            return abs(nx - tx) + abs(ny - ty)
-        directions.sort(key=dist_after_move)
+    if tx is not None:
+        directions.sort(key=lambda d: abs(((head[0]+d[0])%WIDTH) - tx) + abs(((head[1]+d[1])%HEIGHT) - ty))
 
     for dx, dy in directions:
-        new_pos = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
-        if safe(new_pos):
+        np = ((head[0]+dx)%WIDTH, (head[1]+dy)%HEIGHT)
+        if safe(np):
             return dx, dy
 
-    # Inga säkra drag → kör på första tillgängliga (nödlösning)
     return directions[0]
 
 
 def update_enemy():
-    global enemy_snake, enemy_length
+    global enemy_snake, enemy_length, rainbow_exists
 
     head = enemy_snake[0]
     dx, dy = get_valid_enemy_move(head)
     new_head = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
 
-    # Om vi trots allt hamnar i oss själva eller spelaren → omstart
     if new_head in enemy_snake or new_head in player_snake:
         enemy_snake[:] = [(300, 200)]
         enemy_length = 1
+        rainbow_exists = False
         return
 
-    # Flytta fram huvudet
     enemy_snake.insert(0, new_head)
 
-    # 1) Kolla gul mat först
+    # 1) rainbow‐mat
+    for f in foods[:]:
+        if (f[0], f[1]) == new_head and f[2] == "rainbow":
+            enemy_length = max(1, enemy_length // 2)
+            foods.remove(f)
+            rainbow_exists = False
+            return
+
+    # 2) gul
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "yellow":
-            # Väx lite grann (du kan justera till growth +=2 om du vill)
             enemy_length += 1
             foods.remove(f)
-            # Återintroducera en ny gul
             foods.append((random.randrange(0, WIDTH, CELL),
                           random.randrange(0, HEIGHT, CELL),
                           "yellow"))
-            # Gå ut tidigt så vi inte kortar svansen
             return
 
-    # 2) Kolla röd mat
+    # 3) röd
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "red":
             enemy_length += 1
@@ -338,10 +361,9 @@ def update_enemy():
                           "red"))
             return
 
-    # 3) Om inget ätits: korta av svansen om vi är längre än vår length
+    # 4) tail‐pop
     if len(enemy_snake) > enemy_length:
         enemy_snake.pop()
-
 
 def key_handler(e):
     global direction
@@ -358,23 +380,37 @@ document.addEventListener("keydown", create_proxy(key_handler))
 # 8) Evig loop + nedräkning
 # ——————————————
 async def game_loop():
-    global counter, time_left, speed_delay, level
+    global counter, time_left, speed_delay, level, rainbow_exists
+
     while True:
-        if game_state=="playing":
+        if game_state == "playing":
             # nedräkning
             time_left -= speed_delay
             if time_left <= 0:
                 speed_delay *= speed_multiplier
                 time_left = 20.0
-                level += 1  
-            # rita
-            ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
+                level += 1
+                # Var tredje level: spawn rainbow om ingen finns
+                if level % 3 == 0 and not rainbow_exists:
+                    foods.append((
+                        random.randrange(0, WIDTH, CELL),
+                        random.randrange(0, HEIGHT, CELL),
+                        "rainbow"
+                    ))
+                    rainbow_exists = True
+
+            # rita spel
+            ctx.fillStyle = "black"; ctx.fillRect(0, 0, WIDTH, HEIGHT)
             update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
-            if counter % 2==0: update_enemy()
-            if not any(f[2]=="yellow" for f in foods) and random.random()<0.01:
-                foods.append((random.randrange(0,WIDTH,CELL),
-                              random.randrange(0,HEIGHT,CELL),"yellow"))
-            counter+=1
+            if counter % 2 == 0:
+                update_enemy()
+            # normal gul/röd‐spawn
+            if not any(f[2] == "yellow" for f in foods) and random.random() < 0.01:
+                foods.append((random.randrange(0, WIDTH, CELL),
+                              random.randrange(0, HEIGHT, CELL),
+                              "yellow"))
+            counter += 1
+
         await asyncio.sleep(speed_delay)
 
 asyncio.ensure_future(update_start_toplist())
