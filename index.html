@@ -57,11 +57,11 @@
     <button id="btnRight">➡️</button>
   </div>
 
-  <audio id="soundFood" src="pling.wav"></audio>
-  <audio id="soundDeath" src="death.wav"></audio>
-  <audio id="bgMusic" src="music.mp3" loop></audio>
-  <audio id="rainbowLoop" src="rainbow-food.wav" loop></audio>
-  <audio id="soundRainbowEat" src="pling.wav"></audio>
+<audio id="soundFood"        src="pling.wav"></audio>
+<audio id="soundDeath"       src="death.wav"></audio>
+<audio id="bgMusic"          src="music.mp3" loop></audio>
+<audio id="rainbowLoop"      src="rainbow-food.wav" loop></audio>
+<audio id="soundRainbowEat"  src="pling.wav"></audio>
 
   <py-script>
 import asyncio, random, time, json
@@ -177,10 +177,18 @@ async def game_over():
     stop_music()
     try: document.getElementById("soundDeath").play()
     except: pass
-    game_state="gameover"
+    # pausa regnbågs-loopen om den fortfarande snurrar
+    try:
+        loop = document.getElementById("rainbowLoop")
+        loop.pause()
+        loop.currentTime = 0
+    except:
+        pass
+
+    game_state = "gameover"
     await asyncio.sleep(0.1)
     await check_highscore()
-    document.getElementById("startScreen").style.display="flex"
+    document.getElementById("startScreen").style.display = "flex"
 
 def start_game(evt=None):
     global game_state, counter, player_score, player_length
@@ -362,20 +370,23 @@ def update_enemy():
     # 1) Rainbow‐mat
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "rainbow":
-            enemy_length = max(1, enemy_length // 2)
-            enemy_snake[:] = enemy_snake[:enemy_length]
-            try:
-                document.getElementById("soundRainbowEat").play()
-            except:
-                pass
-            foods.remove(f)
-            rainbow_exists = False
+            # halvera längd …
+            player_length = max(1, player_length // 2)
+            player_snake[:] = player_snake[:player_length]
+            # stoppa loopen
             try:
                 loop = document.getElementById("rainbowLoop")
                 loop.pause()
                 loop.currentTime = 0
             except:
                 pass
+            rainbow_exists = False
+            # spela ät-ljudet
+            try:
+                document.getElementById("soundRainbowEat").play()
+            except:
+                pass
+            foods.remove(f)
             return
 
     # 2) Gul mat
@@ -433,14 +444,9 @@ async def game_loop():
                 level += 1
                 # Var tredje level: spawn rainbow om ingen finns
                 if level % 3 == 0 and not rainbow_exists:
-                    foods.append((
-                        random.randrange(0, WIDTH, CELL),
-                        random.randrange(0, HEIGHT, CELL),
-                        "rainbow"
-                    ))
+                    foods.append((x, y, "rainbow"))
                     rainbow_exists = True
-
-                    # starta loop-ljudet
+                    # Starta rainbow–ljudloopen
                     try:
                         document.getElementById("rainbowLoop").play()
                     except:
