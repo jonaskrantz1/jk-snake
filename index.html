@@ -68,6 +68,8 @@ highscores = []
 MAX_HIGHSCORES = 20
 level = 1
 counter = 0
+last_direction = direction  # håller reda på senaste riktning
+
 
 time_left = 20.0
 speed_delay = 0.1
@@ -171,6 +173,8 @@ def start_game(evt=None):
     foods.clear()
     spawn_food('red'); spawn_food('red')
     direction = (CELL, 0)
+    pending_direction = direction
+    last_direction = direction
     level = 1
     time_left = 20.0
     speed_delay = 0.1
@@ -275,33 +279,47 @@ def get_valid_enemy_move(head):
         if safe(np): return dx, dy
     return dirs[0]
 
-def update_enemy():
-    global enemy_length, rainbow_exists
-    head = enemy_snake[0]
-    dx, dy = get_valid_enemy_move(head)
-    nh = ((head[0]+dx)%WIDTH, (head[1]+dy)%HEIGHT)
-    if nh in enemy_snake or nh in player_snake:
-        enemy_snake[:] = [(300,200)]; enemy_length = 1; rainbow_exists = False; return
-    enemy_snake.insert(0, nh)
+def update_snake():
+    global direction, pending_direction, last_direction, player_length, player_score, rainbow_exists
+    if (pending_direction[0], pending_direction[1]) != (-last_direction[0], -last_direction[1]):
+        direction = pending_direction
+
+    hx, hy = player_snake[0]
+    new = ((hx+direction[0]) % WIDTH, (hy+direction[1]) % HEIGHT)
+    last_direction = direction  # uppdatera senast använda riktning
+
+    if new in player_snake or new in enemy_snake:
+        asyncio.ensure_future(game_over())
+        return
+
+    player_snake.insert(0, new)
+
     for f in foods[:]:
-        if (f[0], f[1]) == nh and f[2] == 'rainbow':
-            enemy_length = max(1, enemy_length//2)
-            enemy_snake[:] = enemy_snake[:enemy_length]
+        if (f[0], f[1]) == new and f[2] == "rainbow":
+            player_length = 5
+            player_snake[:] = player_snake[:player_length]
             try: document.getElementById("soundRainbowEat").play()
             except: pass
-            foods.remove(f); rainbow_exists = False
             try:
-                loop = document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime = 0
+                loop = document.getElementById("rainbowLoop")
+                loop.pause(); loop.currentTime = 0
             except: pass
+            rainbow_exists = False
+            foods.remove(f)
             return
+
     for f in foods[:]:
-        if (f[0], f[1]) == nh and f[2]=='yellow':
-            enemy_length += 1; foods.remove(f); spawn_food('yellow'); return
-    for f in foods[:]:
-        if (f[0], f[1]) == nh and f[2]=='red':
-            enemy_length += 1; foods.remove(f); spawn_food('red'); return
-    if len(enemy_snake) > enemy_length:
-        enemy_snake.pop()
+        if (f[0], f[1]) == new:
+            player_length += 1
+            player_score += 10 if f[2] == "red" else 30
+            try: document.getElementById("soundFood").play()
+            except: pass
+            foods.remove(f)
+            spawn_food(f[2])
+            return
+
+    if len(player_snake) > player_length:
+        player_snake.pop()
 
 def key_handler(e):
     global direction
