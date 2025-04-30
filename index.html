@@ -291,7 +291,7 @@ def update_enemy():
             else:
                 enemy_length += 1
                 if f[2] == "red":
-                spawn_food("red")
+                    spawn_food("red")
             foods.remove(f)
             break
 
@@ -335,7 +335,7 @@ def update_snake():
             except: pass
             foods.remove(f)
             if f[2] == "red":
-            spawn_food("red")
+                spawn_food("red")
             return
 
     if len(player_snake) > player_length:
