@@ -267,9 +267,9 @@ def update_snake():
     # rainbow först
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "rainbow":
-             player_length = max(1, player_length // 2)
-             # TRIMMA kroppen så att längden verkligen halveras
-             player_snake[:] = player_snake[:player_length]
+            player_length = max(1, player_length // 2)
+            # TRIMMA kroppen så att längden verkligen halveras
+            player_snake[:] = player_snake[:player_length]
             foods.remove(f)
             rainbow_exists = False
             return
