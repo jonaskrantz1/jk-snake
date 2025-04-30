@@ -231,7 +231,7 @@ def draw_ui():
 
 # Update functions
 
-ddef get_valid_enemy_move(head):
+def get_valid_enemy_move(head):
     body = enemy_snake[:-1]
     def safe(p): return p not in body and p not in player_snake
 
