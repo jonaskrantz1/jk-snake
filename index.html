@@ -32,7 +32,7 @@
     #startButton {
       font-size: 24px; padding: 10px 20px; margin-bottom: 20px;
     }
-    #topList { font-size: 18px; margin-top: 10px; }
+    #topList { font-size: 18px; margin-top: 10px; text-align: left; }
     #touchControls { margin-top: 20px; }
     #touchControls button {
       font-size: 32px; padding: 10px 20px; margin: 5px;
@@ -93,6 +93,7 @@ foods = [(random.randrange(0, WIDTH, CELL),
           "red") for _ in range(2)]
 direction = (CELL, 0)
 highscores = []
+MAX_HIGHSCORES = 20
 level = 1
 counter = 0
 
@@ -139,21 +140,26 @@ async def get_highscores():
 async def update_start_toplist():
     global highscores
     try:
-        hs=await get_highscores(); highscores=hs
-        html="<h3>Global Topplista:</h3>"
-        for e in hs: html+=f"<p>{e['name']}: {e['score']}</p>"
-        document.getElementById("topList").innerHTML=html
-    except Exception as ex:
-        document.getElementById("topList").innerHTML=f"<p>Fel: {ex}</p>"
+        hs = await get_highscores()
+        highscores = hs
+        html = "<h3>Global Topplista:</h3><ol>"
+        for i, entry in enumerate(hs[:MAX_HIGHSCORES], start=1):
+            html += f"<li>{entry['name']}: {entry['score']}</li>"
+        html += "</ol>"
+        document.getElementById("topList").innerHTML = html
+    except Exception as e:
+        document.getElementById("topList").innerHTML = f"<p>Fel: {e}</p>"
 
 async def check_highscore():
     global highscores, player_score
-    hs=await get_highscores()
-    qualifies=len(hs)<10 or player_score>min(x["score"] for x in hs)
+    hs = await get_highscores()
+    # kvalificerar sig om mindre än 20 eller högre än den lägsta av topp 20
+    qualifies = len(hs) < MAX_HIGHSCORES or player_score > min(e["score"] for e in hs[:MAX_HIGHSCORES])
     if not qualifies:
-        highscores=hs; return
-    name=window.prompt("NY HIGH SCORE! Namn:") or "Anon"
-    highscores=await submit_highscore(name, player_score)
+        highscores = hs
+        return
+    name = window.prompt("NY HIGH SCORE! Namn:") or "Anon"
+    highscores = await submit_highscore(name, player_score)
     await update_start_toplist()
 
 # ——————————————
@@ -222,17 +228,17 @@ def draw_enemy():
         ctx.fillStyle="blue"; ctx.fillRect(x,y,CELL,CELL)
 
 def draw_ui():
-    ctx.fillStyle="white"; ctx.font="16px Arial"
+    ctx.fillStyle = "white"; ctx.font = "16px Arial"
     ctx.fillText(f"Poäng: {player_score}", 10, 20)
-    # visa nedräkning
     ctx.fillText(f"Tid: {int(time_left)}", WIDTH-100, 20)
-    # Level under poäng
     ctx.fillText(f"Level: {level}", 10, 40)
-    # Topplista vid game over
-    if game_state=="gameover":
-        y=100; ctx.fillText("Topplista:",10,y)
-        for e in highscores:
-            y+=20; ctx.fillText(f"{e['name']}: {e['score']}",10,y)
+
+    if game_state == "gameover":
+        y = 100
+        ctx.fillText("Topplista:", 10, y)
+        for i, entry in enumerate(highscores[:MAX_HIGHSCORES], start=1):
+            y += 20
+            ctx.fillText(f"{i}. {entry['name']}: {entry['score']}", 10, y)
 
 def update_snake():
     global player_snake, player_score, player_length
