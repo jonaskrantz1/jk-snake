@@ -262,6 +262,42 @@ def update_snake():
     if len(player_snake) > player_length:
         player_snake.pop()
 
+def update_enemy():
+    global enemy_snake, enemy_length, rainbow_exists
+    head = enemy_snake[0]
+    dirs = [(CELL,0), (-CELL,0), (0,CELL), (0,-CELL)]
+    random.shuffle(dirs)
+    for dx, dy in dirs:
+        new = ((head[0]+dx)%WIDTH, (head[1]+dy)%HEIGHT)
+        if new not in enemy_snake and new not in player_snake:
+            break
+    else:
+        new = ((head[0]+CELL)%WIDTH, head[1])
+    if new in enemy_snake or new in player_snake:
+        enemy_snake[:] = [(300,200)]
+        enemy_length = 1
+        rainbow_exists = False
+        return
+    enemy_snake.insert(0, new)
+    for f in foods[:]:
+        if (f[0], f[1]) == new:
+            if f[2] == "rainbow":
+                enemy_length = max(1, enemy_length // 2)
+                enemy_snake[:] = enemy_snake[:enemy_length]
+                try: document.getElementById("soundRainbowEat").play()
+                except: pass
+                try: loop = document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime = 0
+                except: pass
+                rainbow_exists = False
+            else:
+                enemy_length += 1
+                spawn_food(f[2])
+            foods.remove(f)
+            break
+    if len(enemy_snake) > enemy_length:
+        enemy_snake.pop()
+
+
 def get_valid_enemy_move(head):
     body = enemy_snake[:-1]
     def safe(p): return p not in body and p not in player_snake
