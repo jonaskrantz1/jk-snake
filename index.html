@@ -444,7 +444,10 @@ async def game_loop():
                 level += 1
                 # Var tredje level: spawn rainbow om ingen finns
                 if level % 3 == 0 and not rainbow_exists:
-                    foods.append((x, y, "rainbow"))
+                    # Generera slump-koordinater
+                    rx = random.randrange(0, WIDTH, CELL)
+                    ry = random.randrange(0, HEIGHT, CELL)
+                    foods.append((rx, ry, "rainbow"))
                     rainbow_exists = True
                     # Starta rainbow–ljudloopen
                     try:
