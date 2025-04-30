@@ -231,23 +231,49 @@ def draw_ui():
 
 # Update functions
 
+ddef get_valid_enemy_move(head):
+    body = enemy_snake[:-1]
+    def safe(p): return p not in body and p not in player_snake
+
+    # Prioritera: rainbow → yellow → närmaste red
+    rainbow = [f for f in foods if f[2] == "rainbow"]
+    yellow = [f for f in foods if f[2] == "yellow"]
+
+    if rainbow:
+        tx, ty = rainbow[0][:2]
+    elif yellow:
+        tx, ty = yellow[0][:2]
+    else:
+        reds = [f for f in foods if f[2] == "red"]
+        reds.sort(key=lambda f: abs(f[0] - head[0]) + abs(f[1] - head[1]))
+        tx, ty = (reds[0][0], reds[0][1]) if reds else (None, None)
+
+    dirs = [(CELL,0), (-CELL,0), (0,CELL), (0,-CELL)]
+
+    if tx is not None:
+        dirs.sort(key=lambda d: abs(((head[0]+d[0]) % WIDTH) - tx) + abs(((head[1]+d[1]) % HEIGHT) - ty))
+
+    for dx, dy in dirs:
+        np = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
+        if safe(np):
+            return dx, dy
+
+    return dirs[0]
+
 def update_enemy():
     global enemy_snake, enemy_length, rainbow_exists
     head = enemy_snake[0]
-    dirs = [(CELL,0), (-CELL,0), (0,CELL), (0,-CELL)]
-    random.shuffle(dirs)
-    for dx, dy in dirs:
-        new = ((head[0]+dx)%WIDTH, (head[1]+dy)%HEIGHT)
-        if new not in enemy_snake and new not in player_snake:
-            break
-    else:
-        new = ((head[0]+CELL)%WIDTH, head[1])
+    dx, dy = get_valid_enemy_move(head)
+    new = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
+
     if new in enemy_snake or new in player_snake:
-        enemy_snake[:] = [(300,200)]
+        enemy_snake[:] = [(300, 200)]
         enemy_length = 1
         rainbow_exists = False
         return
+
     enemy_snake.insert(0, new)
+
     for f in foods[:]:
         if (f[0], f[1]) == new:
             if f[2] == "rainbow":
@@ -263,28 +289,9 @@ def update_enemy():
                 spawn_food(f[2])
             foods.remove(f)
             break
+
     if len(enemy_snake) > enemy_length:
         enemy_snake.pop()
-
-
-def get_valid_enemy_move(head):
-    body = enemy_snake[:-1]
-    def safe(p): return p not in body and p not in player_snake
-    rainbow = [f for f in foods if f[2]== 'rainbow']
-    yellow  = [f for f in foods if f[2]== 'yellow']
-    if rainbow: tx, ty = rainbow[0][:2]
-    elif yellow: tx, ty = yellow[0][:2]
-    else:
-        reds = [f for f in foods if f[2]=='red']
-        reds.sort(key=lambda f: abs(f[0]-head[0])+abs(f[1]-head[1]))
-        tx, ty = (reds[0][0], reds[0][1]) if reds else (None, None)
-    dirs = [(CELL,0),(-CELL,0),(0,CELL),(0,-CELL)]
-    if tx is not None:
-        dirs.sort(key=lambda d: abs(((head[0]+d[0])%WIDTH)-tx)+abs(((head[1]+d[1])%HEIGHT)-ty))
-    for dx, dy in dirs:
-        np = ((head[0]+dx)%WIDTH, (head[1]+dy)%HEIGHT)
-        if safe(np): return dx, dy
-    return dirs[0]
 
 def update_snake():
     global direction, pending_direction, last_direction, player_length, player_score, rainbow_exists
