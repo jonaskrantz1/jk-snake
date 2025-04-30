@@ -376,10 +376,11 @@ async def game_loop():
                         pass
 
             update_snake()
+
             if counter % 2 == 0:
                 update_enemy()
 
-            # Gul mat: bara om ingen finns, och slumpad timer har gått ut
+            # Gul mat: spawnas endast med timer, inte direkt
             if not any(f[2] == 'yellow' for f in foods):
                 yellow_timer += speed_delay
                 if yellow_timer >= yellow_next_spawn:
@@ -387,10 +388,18 @@ async def game_loop():
                     yellow_timer = 0.0
                     yellow_next_spawn = random.uniform(5, 15)
 
+            # Rensa och rita
+            ctx.fillStyle = "black"
+            ctx.fillRect(0, 0, WIDTH, HEIGHT)
+            draw_snake()
+            draw_food()
+            draw_enemy()
             draw_ui()
+
             counter += 1
 
         await asyncio.sleep(speed_delay)
+
 
 
 asyncio.ensure_future(update_start_toplist())
