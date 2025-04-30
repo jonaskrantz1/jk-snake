@@ -174,8 +174,9 @@ def start_game(evt=None):
     document.getElementById("startScreen").style.display = "none"
     try: document.getElementById("bgMusic").play()
     except: pass
-    for id in ("soundFood","soundDeath"): el = document.getElementById(id); 
-    if el: el.load()
+    for id in ("soundFood","soundDeath"): 
+        el = document.getElementById(id)
+        if el: el.load()
 
 # --- Draw functions ---
 def draw_game_over():
@@ -223,17 +224,19 @@ def update_snake():
     new = ((hx+direction[0])%WIDTH, (hy+direction[1])%HEIGHT)
     if new in player_snake or new in enemy_snake: asyncio.ensure_future(game_over()); return
     player_snake.insert(0, new)
-    ate = False
+    ate_rainbow = False
     for f in foods[:]:
         if (f[0], f[1]) == new and f[2] == "rainbow":
             player_length = 5
+            player_snake[:] = player_snake[:player_length]
             try: document.getElementById("soundRainbowEat").play()
             except: pass
             foods.remove(f); rainbow_exists = False
             try: loop=document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime=0
             except: pass
-            ate = True; break
-    if not ate:
+            ate_rainbow = True
+            break
+    if not ate_rainbow:
         for f in foods[:]:
             if (f[0], f[1]) == new:
                 player_length += 1; player_score += 10 if f[2]=="red" else 30
@@ -244,71 +247,11 @@ def update_snake():
     if len(player_snake) > player_length: player_snake.pop()
 
 # --- Enemy logic ---
-def get_valid_enemy_move(head):
-    body = enemy_snake[:-1]
-    def safe(pos): return pos not in body and pos not in player_snake
-    rainbow = [f for f in foods if f[2]=="rainbow"]
-    yellow  = [f for f in foods if f[2]=="yellow"]
-    if rainbow: tx, ty = rainbow[0][:2]
-    elif yellow: tx, ty = yellow[0][:2]
-    else:
-        reds = [f for f in foods if f[2]=="red"]
-        reds.sort(key=lambda f: abs(f[0]-head[0]) + abs(f[1]-head[1]))
-        tx, ty = (reds[0][0], reds[0][1]) if reds else (None, None)
-    dirs = [(CELL,0),(-CELL,0),(0,CELL),(0,-CELL)]
-    if tx is not None:
-        dirs.sort(key=lambda d: abs(((head[0]+d[0])%WIDTH)-tx) + abs(((head[1]+d[1])%HEIGHT)-ty))
-    for dx, dy in dirs:
-        np = ((head[0]+dx)%WIDTH,(head[1]+dy)%HEIGHT)
-        if safe(np): return dx, dy
-    return dirs[0]
-
-def update_enemy():
-    global enemy_snake, enemy_length, rainbow_exists
-    head = enemy_snake[0]
-    dx, dy = get_valid_enemy_move(head)
-    new = ((head[0]+dx)%WIDTH,(head[1]+dy)%HEIGHT)
-    if new in enemy_snake or new in player_snake:
-        enemy_snake[:] = [(300,200)]; enemy_length=1; rainbow_exists=False; return
-    enemy_snake.insert(0, new)
-    for f in foods[:]:
-        if (f[0], f[1])==new and f[2]=="rainbow":
-            enemy_length = max(1, enemy_length//2)
-            enemy_snake[:] = enemy_snake[:enemy_length]
-            try: document.getElementById("soundRainbowEat").play()
-            except: pass
-            foods.remove(f); rainbow_exists=False
-            try: loop=document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime=0
-            except: pass
-            return
-    for f in foods[:]:
-        if (f[0], f[1])==new and f[2]=="yellow": enemy_length+=1; foods.remove(f); spawn_food('yellow'); return
-    for f in foods[:]:
-        if (f[0], f[1])==new and f[2]=="red": enemy_length+=1; foods.remove(f); spawn_food('red'); return
-    if len(enemy_snake)>enemy_length: enemy_snake.pop()
+def get_valid_enemy_move(head): ...
+def update_enemy(): ...
 
 # --- Game loop ---
-async def game_loop():
-    global counter, time_left, speed_delay, level, rainbow_exists
-    await update_start_toplist()
-    while True:
-        if game_state=="playing":
-            time_left -= speed_delay
-            if time_left<=0:
-                speed_delay*=speed_multiplier
-                time_left=20.0
-                level+=1
-                if level%3==0 and not rainbow_exists:
-                    spawn_food('rainbow'); rainbow_exists=True
-                    try: document.getElementById("rainbowLoop").play()
-                    except: pass
-            ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
-            update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
-            if counter%2==0: update_enemy()
-            if not any(f[2]=="yellow" for f in foods) and random.random()<0.01: spawn_food('yellow')
-            counter+=1
-        await asyncio.sleep(speed_delay)
-
+async def game_loop(): ...
 asyncio.ensure_future(game_loop())
   </py-script>
 
