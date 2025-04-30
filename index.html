@@ -387,7 +387,7 @@ async def game_loop():
                     yellow_timer = 0.0
                     yellow_next_spawn = random.uniform(5, 15)
 
-            draw()
+            draw_ui()
             counter += 1
 
         await asyncio.sleep(speed_delay)
