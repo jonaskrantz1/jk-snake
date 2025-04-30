@@ -60,6 +60,8 @@
   <audio id="soundFood" src="pling.wav"></audio>
   <audio id="soundDeath" src="death.wav"></audio>
   <audio id="bgMusic" src="music.mp3" loop></audio>
+  <audio id="rainbowLoop" src="rainbow-food.wav" loop></audio>
+  <audio id="soundRainbowEat" src="pling.wav"></audio>
 
   <py-script>
 import asyncio, random, time, json
@@ -266,14 +268,29 @@ def update_snake():
 
     # rainbow först
     for f in foods[:]:
-        if (f[0], f[1]) == new_head and f[2] == "rainbow":
-            player_length = max(1, player_length // 2)
-            # TRIMMA kroppen så att längden verkligen halveras
-            player_snake[:] = player_snake[:player_length]
-            foods.remove(f)
-            rainbow_exists = False
-            return
+    if (f[0], f[1]) == new_head and f[2] == "rainbow":
+        player_length = max(1, player_length // 2)
+        player_snake[:] = player_snake[:player_length]
 
+        # pling-ektet
+        try:
+            document.getElementById("soundRainbowEat").play()
+        except:
+            pass
+
+        # ta bort regnbågsmaten
+        foods.remove(f)
+        rainbow_exists = False
+
+        # stoppa loopen
+        try:
+            loop = document.getElementById("rainbowLoop")
+            loop.pause()
+            loop.currentTime = 0
+        except:
+            pass
+
+        return
     # gul/röd som tidigare
     for f in foods[:]:
         if (f[0], f[1]) == new_head:
@@ -337,13 +354,28 @@ def update_enemy():
 
     # 1) rainbow‐mat
     for f in foods[:]:
-        if (f[0], f[1]) == new_head and f[2] == "rainbow":
-            enemy_length = max(1, enemy_length // 2)
-            # TRIMMA fiendekroppen också
-            enemy_snake[:] = enemy_snake[:enemy_length]
-            foods.remove(f)
-            rainbow_exists = False
-            return
+    if (f[0], f[1]) == new_head and f[2] == "rainbow":
+        enemy_length = max(1, enemy_length // 2)
+        enemy_snake[:] = enemy_snake[:enemy_length]
+
+        # pling för fienden
+        try:
+            document.getElementById("soundRainbowEat").play()
+        except:
+            pass
+
+        foods.remove(f)
+        rainbow_exists = False
+
+        # stoppa loopen
+        try:
+            loop = document.getElementById("rainbowLoop")
+            loop.pause()
+            loop.currentTime = 0
+        except:
+            pass
+
+        return
 
     # 2) gul
     for f in foods[:]:
@@ -403,6 +435,11 @@ async def game_loop():
                     ))
                     rainbow_exists = True
 
+                    # starta loop-ljudet
+                    try:
+                        document.getElementById("rainbowLoop").play()
+                    except:
+                        pass
             # rita spel
             ctx.fillStyle = "black"; ctx.fillRect(0, 0, WIDTH, HEIGHT)
             update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
