@@ -46,13 +46,11 @@ import asyncio, random, time, json
 from js import document, window, fetch
 from pyodide.ffi import create_proxy, to_js
 
-# 1) Start event
-
-def _on_start(evt):
-    start_game()
+# Start event
+def _on_start(evt): start_game()
 document.addEventListener("startGame", create_proxy(_on_start))
 
-# 2) Constants & state
+# Constants & state
 WIDTH, HEIGHT, CELL = 600, 400, 20
 canvas = document.getElementById("gameCanvas")
 ctx = canvas.getContext("2d")
@@ -64,8 +62,10 @@ player_score = 0
 
 enemy_snake = [(300, 200)]
 enemy_length = 1
+
 direction = (CELL, 0)
-pending_direction = direction
+pending_direction = direction  # allow input buffering
+
 foods = []
 highscores = []
 MAX_HIGHSCORES = 20
@@ -77,11 +77,8 @@ speed_delay = 0.1
 speed_multiplier = 0.85
 rainbow_exists = False
 
-# Helpers
-
-def occupied(x, y):
-    return (x, y) in player_snake or (x, y) in enemy_snake
-
+# Helpers to avoid spawning on snakes
+def occupied(x, y): return (x, y) in player_snake or (x, y) in enemy_snake
 def spawn_food(kind):
     while True:
         x = random.randrange(0, WIDTH, CELL)
@@ -90,11 +87,11 @@ def spawn_food(kind):
             foods.append((x, y, kind))
             break
 
-# 3) Controls
-
+# Controls
 def touch_direction(dir):
     global pending_direction
     if game_state != "playing": return
+    pd = pending_direction
     if dir == "up":    pd = (0, -CELL)
     if dir == "down":  pd = (0, CELL)
     if dir == "left":  pd = (-CELL, 0)
@@ -102,13 +99,15 @@ def touch_direction(dir):
     pending_direction = pd
 
 for btn, d in [("btnUp","up"),("btnDown","down"),("btnLeft","left"),("btnRight","right")]:
-    document.getElementById(btn).addEventListener("click", create_proxy(lambda e, dir=d: touch_direction(dir)))
+    document.getElementById(btn).addEventListener(
+        "click", create_proxy(lambda e,dir=d: touch_direction(dir))
+    )
 
-# 4) Highscore API
+# Highscore API
 async def submit_highscore(name, score):
     resp = await fetch(
         "https://highscore.jonas-krantz-1.workers.dev/highscores",
-        to_js({"method":"POST","headers":{"Content-Type":"application/json"},"body":json.dumps({"name": name, "score": score})})
+        to_js({"method":"POST","headers":{"Content-Type":"application/json"},"body":json.dumps({"name":name,"score":score})})
     )
     return (await resp.json()).to_py()
 
@@ -122,8 +121,7 @@ async def update_start_toplist():
         hs = await get_highscores()
         highscores = hs
         html = "<h3>Global Topplista:</h3><ol>"
-        for i, e in enumerate(hs[:MAX_HIGHSCORES], start=1):
-            html += f"<li>{e['name']}: {e['score']}</li>"
+        for i, e in enumerate(hs[:MAX_HIGHSCORES], start=1): html += f"<li>{e['name']}: {e['score']}</li>"
         html += "</ol>"
         document.getElementById("topList").innerHTML = html
     except Exception as ex:
@@ -139,8 +137,7 @@ async def check_highscore():
     highscores = await submit_highscore(name, player_score)
     await update_start_toplist()
 
-# 5) Game over & start
-
+# Game over & start
 def stop_music():
     try: document.getElementById("bgMusic").pause()
     except: pass
@@ -160,14 +157,13 @@ async def game_over():
     document.getElementById("startScreen").style.display = "flex"
 
 def start_game(evt=None):
-    global game_state, counter, player_score, player_length
-    global player_snake, enemy_snake, enemy_length, foods, direction, pending_direction, level, time_left, speed_delay
+    global game_state, counter, player_score, player_length, direction, pending_direction, level, time_left, speed_delay
     game_state = "playing"
     counter = 0
-    player_snake = [(WIDTH//2, HEIGHT//2)]
+    player_snake[:] = [(WIDTH//2, HEIGHT//2)]
     player_length = 5; player_score = 0
-    enemy_snake = [(300, 200)]; enemy_length = 1
-    foods = []
+    enemy_snake[:] = [(300, 200)]; enemy_length = 1
+    foods.clear()
     spawn_food('red'); spawn_food('red')
     direction = (CELL, 0); pending_direction = direction
     level = 1; time_left = 20.0; speed_delay = 0.1
@@ -178,63 +174,53 @@ def start_game(evt=None):
         el = document.getElementById(id)
         if el: el.load()
 
-# 6) Draw funcs
-
+# Draw funcs
 def draw_game_over():
-    ctx.fillStyle = "black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
-    ctx.fillStyle = "red"; ctx.font = "16px 'Press Start 2P'"
-    ctx.fillText("GAME OVER", WIDTH//2-120, HEIGHT//2-40)
-    ctx.fillStyle = "white"; ctx.font = "12px 'Press Start 2P'"
-    ctx.fillText(f"Poäng: {player_score}", WIDTH//2-80, HEIGHT//2)
-    ctx.fillText("Tryck på start", WIDTH//2-100, HEIGHT//2+40)
-    ctx.fillText("för att spela igen", WIDTH//2-130, HEIGHT//2+60)
+    ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
+    ctx.fillStyle="red"; ctx.font="16px 'Press Start 2P'"
+    ctx.fillText("GAME OVER",WIDTH//2-120,HEIGHT//2-40)
+    ctx.fillStyle="white"; ctx.font="12px 'Press Start 2P'"
+    ctx.fillText(f"Poäng: {player_score}",WIDTH//2-80,HEIGHT//2)
+    ctx.fillText("Tryck på start",WIDTH//2-100,HEIGHT//2+40)
+    ctx.fillText("för att spela igen",WIDTH//2-130,HEIGHT//2+60)
     draw_ui()
 
 def draw_snake():
-    for x,y in player_snake:
-        ctx.fillStyle = "lime"; ctx.fillRect(x,y,CELL,CELL)
+    for x,y in player_snake: ctx.fillStyle="lime"; ctx.fillRect(x,y,CELL,CELL)
 
 def draw_food():
     for x,y,k in foods:
-        if k == "rainbow":
-            hue = int((time.time()*200)%360)
-            ctx.fillStyle = f"hsl({hue},100%,50%)"
-        elif k == "yellow": ctx.fillStyle = "gold"
-        else: ctx.fillStyle = "red"
+        if k=="rainbow": hue=int((time.time()*200)%360); ctx.fillStyle=f"hsl({hue},100%,50%)"
+        elif k=="yellow": ctx.fillStyle="gold"
+        else: ctx.fillStyle="red"
         ctx.fillRect(x,y,CELL,CELL)
 
 def draw_enemy():
-    for x,y in enemy_snake:
-        ctx.fillStyle = "blue"; ctx.fillRect(x,y,CELL,CELL)
+    for x,y in enemy_snake: ctx.fillStyle="blue"; ctx.fillRect(x,y,CELL,CELL)
 
 def draw_ui():
-    ctx.fillStyle = "white"; ctx.font = "16px Arial"
-    ctx.fillText(f"Poäng: {player_score}", 10,20)
-    ctx.fillText(f"Tid: {int(time_left)}", WIDTH-100,20)
-    ctx.fillText(f"Masklängd: {player_length}", 10,40)
-    ctx.fillText(f"Hastighet: {round(1/speed_delay,1)}", 10,60)
-    ctx.fillText(f"Level: {level}", 10,80)
-    if game_state == "gameover":
-        y = 120
-        ctx.fillText("Topplista:", 10,y)
-        for i,e in enumerate(highscores[:MAX_HIGHSCORES], start=1):
-            y+=20; ctx.fillText(f"{i}. {e['name']}: {e['score']}",10,y)
+    ctx.fillStyle="white"; ctx.font="16px Arial"
+    ctx.fillText(f"Poäng: {player_score}",10,20)
+    ctx.fillText(f"Tid: {int(time_left)}",WIDTH-100,20)
+    ctx.fillText(f"Masklängd: {player_length}",10,40)
+    ctx.fillText(f"Hastighet: {round(1/speed_delay,1)}",10,60)
+    ctx.fillText(f"Level: {level}",10,80)
+    if game_state=="gameover":
+        y=120
+        ctx.fillText("Topplista:",10,y)
+        for i,e in enumerate(highscores[:MAX_HIGHSCORES],start=1): y+=20; ctx.fillText(f"{i}. {e['name']}: {e['score']}",10,y)
 
-# 7) Update logic
-
+# Update logic
 def update_snake():
-    global direction, pending_direction, player_snake, player_length, player_score, rainbow_exists
-    # validate pending (no reverse)
+    global direction,pending_direction,player_snake,player_length,player_score,rainbow_exists
     pdx,pdy = pending_direction
     dx,dy = direction
-    if (pdx, pdy) != (-dx, -dy): direction = pending_direction
-    # move head
-    head_x,head_y = player_snake[0]
-    new_head = ((head_x+direction[0])%WIDTH, (head_y+direction[1])%HEIGHT)
-    if new_head in player_snake or new_head in enemy_snake:
-        asyncio.ensure_future(game_over()); return
+    if (pdx,pdy) != (-dx,-dy): direction = pending_direction
+    hx,hy = player_snake[0]
+    new_head = ((hx+direction[0])%WIDTH,(hy+direction[1])%HEIGHT)
+    if new_head in player_snake or new_head in enemy_snake: asyncio.ensure_future(game_over()); return
     player_snake.insert(0,new_head)
-    # rainbow
+    ate=False
     for f in foods[:]:
         if (f[0],f[1])==new_head and f[2]=="rainbow":
             player_length=5
@@ -243,35 +229,30 @@ def update_snake():
             foods.remove(f); rainbow_exists=False
             try: loop=document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime=0
             except: pass
-            break
-    else:
-        # yellow/red
+            ate=True; break
+    if not ate:
         for f in foods[:]:
             if (f[0],f[1])==new_head:
                 player_length+=1; player_score+=10 if f[2]=="red" else 30
                 try: document.getElementById("soundFood").play()
                 except: pass
-                foods.remove(f)
-                spawn_food(f[2])
+                foods.remove(f); spawn_food(f[2])
                 break
-    # trim
     if len(player_snake)>player_length: player_snake.pop()
 
-import math
-
+# Enemy logic
 def get_valid_enemy_move(head):
     body=enemy_snake[:-1]
-    def safe(pos): return pos not in body and pos not in player_snake
-    # target order
-    if any(f[2]=="rainbow" for f in foods):
-        tgt=[f for f in foods if f[2]=="rainbow"][0]
-    elif any(f[2]=="yellow" for f in foods):
-        tgt=[f for f in foods if f[2]=="yellow"][0]
+    safe=lambda p: p not in body and p not in player_snake
+    rainbow=[f for f in foods if f[2]=="rainbow"]
+    yellow=[f for f in foods if f[2]=="yellow"]
+    if rainbow: tgt=rainbow[0]
+    elif yellow: tgt=yellow[0]
     else:
         reds=[f for f in foods if f[2]=="red"]
-        reds.sort(key=lambda f: abs(f[0]-head[0])+abs(f[1]-head[1]))
+        reds.sort(key=lambda f:abs(f[0]-head[0])+abs(f[1]-head[1]))
         tgt=reds[0] if reds else None
-    tx,ty = (tgt[0],tgt[1]) if tgt else (None,None)
+    tx,ty=(tgt[0],tgt[1]) if tgt else (None,None)
     dirs=[(CELL,0),(-CELL,0),(0,CELL),(0,-CELL)]
     if tx is not None:
         dirs.sort(key=lambda d: abs(((head[0]+d[0])%WIDTH)-tx)+abs(((head[1]+d[1])%HEIGHT)-ty))
@@ -280,14 +261,15 @@ def get_valid_enemy_move(head):
         if safe(np): return dx,dy
     return dirs[0]
 
-
 def update_enemy():
-    global enemy_snake, enemy_length, rainbow_exists
-    head=enemy_snake[0]; dx,dy=get_valid_enemy_move(head)
+    global enemy_snake,enemy_length,rainbow_exists
+    head=enemy_snake[0]
+    dx,dy=get_valid_enemy_move(head)
     new_head=((head[0]+dx)%WIDTH,(head[1]+dy)%HEIGHT)
     if new_head in enemy_snake or new_head in player_snake:
         enemy_snake=[(300,200)]; enemy_length=1; rainbow_exists=False; return
     enemy_snake.insert(0,new_head)
+    handled=False
     for f in foods[:]:
         if (f[0],f[1])==new_head and f[2]=="rainbow":
             enemy_length=max(1,enemy_length//2)
@@ -296,24 +278,21 @@ def update_enemy():
             foods.remove(f); rainbow_exists=False
             try: loop=document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime=0
             except: pass
-            break
-    else:
+            handled=True; break
+    if not handled:
         for f in foods[:]:
-            if (f[0],f[1])==new_head and f[2]=="yellow":
-                enemy_length+=1; foods.remove(f); spawn_food("yellow"); break
-        else:
-            for f in foods[:]:
-                if (f[0],f[1])==new_head and f[2]=="red":
-                    enemy_length+=1; foods.remove(f); spawn_food("red"); break
+            if (f[0],f[1])==new_head and f[2]=="yellow": enemy_length+=1; foods.remove(f); spawn_food("yellow"); handled=True; break
+    if not handled:
+        for f in foods[:]:
+            if (f[0],f[1])==new_head and f[2]=="red": enemy_length+=1; foods.remove(f); spawn_food("red"); handled=True; break
     if len(enemy_snake)>enemy_length: enemy_snake.pop()
 
-# 8) Game loop
+# Game loop
 async def game_loop():
-    global counter, time_left, speed_delay, level, rainbow_exists
-    # initial reds\ n    spawn_food('red'); spawn_food('red')
     await update_start_toplist()
     while True:
-        if game_state=='playing':
+        if game_state=="playing":
+            global counter,time_left,speed_delay,level,rainbow_exists
             time_left-=speed_delay
             if time_left<=0:
                 speed_delay*=speed_multiplier
@@ -326,8 +305,7 @@ async def game_loop():
             ctx.fillStyle="black"; ctx.fillRect(0,0,WIDTH,HEIGHT)
             update_snake(); draw_snake(); draw_food(); draw_enemy(); draw_ui()
             if counter%2==0: update_enemy()
-            if not any(f[2]=="yellow" for f in foods) and random.random()<0.01:
-                spawn_food('yellow')
+            if not any(f[2]=="yellow" for f in foods) and random.random()<0.01: spawn_food('yellow')
             counter+=1
         await asyncio.sleep(speed_delay)
 
