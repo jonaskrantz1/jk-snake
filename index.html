@@ -64,7 +64,7 @@ enemy_snake = [(300, 200)]
 enemy_length = 1
 
 direction = (CELL, 0)
-pending_direction = direction  # buffered input
+pending_direction = direction
 
 foods = []
 highscores = []
@@ -92,10 +92,8 @@ def spawn_food(kind):
 def touch_direction(dir):
     global pending_direction
     if game_state != "playing": return
-    if dir == "up":    new = (0, -CELL)
-    if dir == "down":  new = (0, CELL)
-    if dir == "left":  new = (-CELL, 0)
-    if dir == "right": new = (CELL, 0)
+    mapping = {"up":(0,-CELL),"down":(0,CELL),"left":(-CELL,0),"right":(CELL,0)}
+    new = mapping[dir]
     if new != (-direction[0], -direction[1]):
         pending_direction = new
 
@@ -106,7 +104,8 @@ for btn, d in [("btnUp","up"),("btnDown","down"),("btnLeft","left"),("btnRight",
 
 def key_handler(e):
     if game_state != "playing": return
-    if e.key.startswith("Arrow"): touch_direction(e.key.replace("Arrow","").lower())
+    if e.key.startswith("Arrow"):
+        touch_direction(e.key.replace("Arrow","").lower())
 
 document.addEventListener("keydown", create_proxy(key_handler))
 
@@ -175,7 +174,7 @@ def start_game(evt=None):
     document.getElementById("startScreen").style.display = "none"
     try: document.getElementById("bgMusic").play()
     except: pass
-    for id in ("soundFood","soundDeath"): el=document.getElementById(id);
+    for id in ("soundFood","soundDeath"): el = document.getElementById(id); 
     if el: el.load()
 
 # --- Draw functions ---
@@ -213,7 +212,7 @@ def draw_ui():
         y = 120
         for i, e in enumerate(highscores[:MAX_HIGHSCORES], start=1):
             y += 20
-            ctx.fillText(f"{i}. {e['name']}: {e['score']}", 10, y)
+            ctx.fillText(f"{i}. {e['name']}: {e['score']}" , 10, y)
 
 # --- Update logic ---
 def update_snake():
@@ -231,13 +230,13 @@ def update_snake():
             try: document.getElementById("soundRainbowEat").play()
             except: pass
             foods.remove(f); rainbow_exists = False
-            try: loop = document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime = 0
+            try: loop=document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime=0
             except: pass
             ate = True; break
     if not ate:
         for f in foods[:]:
             if (f[0], f[1]) == new:
-                player_length += 1; player_score += 10 if f[2] == "red" else 30
+                player_length += 1; player_score += 10 if f[2]=="red" else 30
                 try: document.getElementById("soundFood").play()
                 except: pass
                 foods.remove(f); spawn_food(f[2])
@@ -270,7 +269,7 @@ def update_enemy():
     dx, dy = get_valid_enemy_move(head)
     new = ((head[0]+dx)%WIDTH,(head[1]+dy)%HEIGHT)
     if new in enemy_snake or new in player_snake:
-        enemy_snake[:] = [(300,200)]; enemy_length = 1; rainbow_exists = False; return
+        enemy_snake[:] = [(300,200)]; enemy_length=1; rainbow_exists=False; return
     enemy_snake.insert(0, new)
     for f in foods[:]:
         if (f[0], f[1])==new and f[2]=="rainbow":
@@ -283,15 +282,14 @@ def update_enemy():
             except: pass
             return
     for f in foods[:]:
-        if (f[0], f[1])==new and f[2]=="yellow":
-            enemy_length +=1; foods.remove(f); spawn_food('yellow'); return
+        if (f[0], f[1])==new and f[2]=="yellow": enemy_length+=1; foods.remove(f); spawn_food('yellow'); return
     for f in foods[:]:
-        if (f[0], f[1])==new and f[2]=="red":
-            enemy_length +=1; foods.remove(f); spawn_food('red'); return
+        if (f[0], f[1])==new and f[2]=="red": enemy_length+=1; foods.remove(f); spawn_food('red'); return
     if len(enemy_snake)>enemy_length: enemy_snake.pop()
 
 # --- Game loop ---
 async def game_loop():
+    global counter, time_left, speed_delay, level, rainbow_exists
     await update_start_toplist()
     while True:
         if game_state=="playing":
@@ -315,10 +313,8 @@ asyncio.ensure_future(game_loop())
   </py-script>
 
   <script>
-  async function startWithMusic(){
-    let m=document.getElementById("bgMusic"); if(m&&m.paused) try{await m.play()}catch(e){}
-    document.dispatchEvent(new Event("startGame"));
-  }
+  async function startWithMusic(){ let m=document.getElementById("bgMusic"); if(m&&m.paused) try{await m.play()}catch(e){}
+    document.dispatchEvent(new Event("startGame")); }
   </script>
 </body>
 </html>
