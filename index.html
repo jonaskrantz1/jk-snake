@@ -359,6 +359,7 @@ def update_enemy():
     dx, dy = get_valid_enemy_move(head)
     new_head = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
 
+    # Krock → reset
     if new_head in enemy_snake or new_head in player_snake:
         enemy_snake[:] = [(300, 200)]
         enemy_length = 1
@@ -367,26 +368,32 @@ def update_enemy():
 
     enemy_snake.insert(0, new_head)
 
-    # 1) Rainbow‐mat
+    # 1) Rainbow‐mat först
     for f in foods[:]:
         if (f[0], f[1]) == new_head and f[2] == "rainbow":
-            # halvera längd …
-            player_length = max(1, player_length // 2)
-            player_snake[:] = player_snake[:player_length]
-            # stoppa loopen
+            # halvera fiendelängden
+            enemy_length = max(1, enemy_length // 2)
+            # trimma kroppen
+            enemy_snake[:] = enemy_snake[:enemy_length]
+
+            # spela pling‐ljud
+            try:
+                document.getElementById("soundRainbowEat").play()
+            except:
+                pass
+
+            # ta bort regnbågsmaten
+            foods.remove(f)
+            rainbow_exists = False
+
+            # stoppa rainbow‐loop
             try:
                 loop = document.getElementById("rainbowLoop")
                 loop.pause()
                 loop.currentTime = 0
             except:
                 pass
-            rainbow_exists = False
-            # spela ät-ljudet
-            try:
-                document.getElementById("soundRainbowEat").play()
-            except:
-                pass
-            foods.remove(f)
+
             return
 
     # 2) Gul mat
