@@ -103,6 +103,7 @@ def spawn_food(kind):
             foods.append((x, y, kind))
             return
 
+
 # Mobile touch controls
 
 def touch_direction(dir):
@@ -174,31 +175,52 @@ async def game_over():
     document.getElementById("startScreen").style.display = "flex"
 
 def start_game(evt=None):
-    global game_state, counter, player_score, player_length, enemy_length, direction, pending_direction, last_direction, level, time_left, speed_delay
+    global game_state, counter, player_score, player_length
+    global enemy_length, direction, pending_direction, last_direction
+    global level, time_left, speed_delay
+    global yellow_timer, yellow_next_spawn, rainbow_exists
+
     game_state = "playing"
     counter = 0
-    player_snake[:] = [(WIDTH//2, HEIGHT//2)]
+
+    # Startpositioner
+    player_snake[:] = [(WIDTH // 2, HEIGHT // 2)]
+    enemy_snake[:] = [(300, 200)]
+
+    # Initlängder och poäng
     player_length = 5
     player_score = 0
-    enemy_snake[:] = [(300, 200)]
     enemy_length = 1
-    foods.clear()
-    spawn_food('red'); spawn_food('red')
+
+    # Rörelseriktningar
     direction = (CELL, 0)
     pending_direction = direction
     last_direction = direction
+
+    # Mat och nivå
+    foods.clear()
+    spawn_food("red")
+    spawn_food("red")
     level = 1
     time_left = 20.0
     speed_delay = 0.1
+    rainbow_exists = False
+
+    # Gul mat timer
     yellow_timer = 0.0
     yellow_next_spawn = random.uniform(5, 15)
-    rainbow_exists = False
+
+    # UI och ljud
     document.getElementById("startScreen").style.display = "none"
-    try: document.getElementById("bgMusic").play()
-    except: pass
-    for id in ("soundFood","soundDeath","rainbowLoop"):
+    try:
+        document.getElementById("bgMusic").play()
+    except:
+        pass
+
+    for id in ("soundFood", "soundDeath", "rainbowLoop"):
         el = document.getElementById(id)
         if el: el.load()
+
 
 # Drawing functions
 
@@ -217,11 +239,16 @@ def draw_snake():
         ctx.fillStyle = "lime"; ctx.fillRect(x, y, CELL, CELL)
 
 def draw_food():
-    for x, y, k in foods:
-        if k == 'rainbow': hue = int((time.time()*200) % 360); ctx.fillStyle = f"hsl({hue},100%,50%)"
-        elif k == 'yellow': ctx.fillStyle = "gold"
-        else: ctx.fillStyle = "red"
+    for x, y, kind in foods:
+        if kind == "rainbow":
+            hue = int((time.time() * 200) % 360)
+            ctx.fillStyle = f"hsl({hue}, 100%, 50%)"
+        elif kind == "yellow":
+            ctx.fillStyle = "gold"
+        else:
+            ctx.fillStyle = "red"
         ctx.fillRect(x, y, CELL, CELL)
+
 
 def draw_enemy():
     for x, y in enemy_snake:
@@ -244,10 +271,9 @@ def draw_ui():
 # Update functions
 
 def get_valid_enemy_move(head):
-    body = enemy_snake[:-1]  # svansen rör sig så den kan betraktas som säker
-    def safe(pos): return pos not in body and pos not in player_snake
+    body = enemy_snake[:-1]
+    def safe(p): return p not in body and p not in player_snake
 
-    # Prioriteringslogik: rainbow → yellow → närmaste red
     targets = (
         [f for f in foods if f[2] == "rainbow"] or
         [f for f in foods if f[2] == "yellow"] or
@@ -258,22 +284,20 @@ def get_valid_enemy_move(head):
     )
 
     tx, ty = targets[0][:2] if targets else (None, None)
-
     directions = [(CELL, 0), (-CELL, 0), (0, CELL), (0, -CELL)]
 
     if tx is not None:
         directions.sort(
-            key=lambda d: abs(((head[0] + d[0]) % WIDTH) - tx) + abs(((head[1] + d[1]) % HEIGHT) - ty)
+            key=lambda d: abs(((head[0]+d[0]) % WIDTH) - tx) + abs(((head[1]+d[1]) % HEIGHT) - ty)
         )
 
-    # Försök hitta en säker riktning mot målet
     for dx, dy in directions:
         np = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
         if safe(np):
             return dx, dy
 
-    # Ingen säker väg → välj första ändå (kommer krascha)
     return directions[0]
+
 
 
 def update_enemy():
@@ -283,7 +307,6 @@ def update_enemy():
     dx, dy = get_valid_enemy_move(head)
     new = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
 
-    # Kollision → omstart
     if new in enemy_snake or new in player_snake:
         enemy_snake[:] = [(300, 200)]
         enemy_length = 1
@@ -308,7 +331,6 @@ def update_enemy():
             elif kind == "red":
                 enemy_length += 1
                 spawn_food("red")
-            # gul mat ger +1 men ingen direkt spawn längre
             elif kind == "yellow":
                 enemy_length += 1
             foods.remove(f)
@@ -318,25 +340,23 @@ def update_enemy():
         enemy_snake.pop()
 
 
+
 def update_snake():
     global direction, pending_direction, last_direction, player_length, player_score, rainbow_exists
 
-    # Förhindra 180°-vändning
     if (pending_direction[0], pending_direction[1]) != (-last_direction[0], -last_direction[1]):
         direction = pending_direction
 
     hx, hy = player_snake[0]
     new = ((hx + direction[0]) % WIDTH, (hy + direction[1]) % HEIGHT)
-    last_direction = direction  # Spara senaste rörelse
+    last_direction = direction
 
-    # Kollision med sig själv eller fiende
     if new in player_snake or new in enemy_snake:
         asyncio.ensure_future(game_over())
         return
 
     player_snake.insert(0, new)
 
-    # Kolla om mat äts
     for f in foods[:]:
         fx, fy, kind = f
         if (fx, fy) == new:
@@ -360,9 +380,10 @@ def update_snake():
             foods.remove(f)
             return
 
-    # Om ingen mat ätits – kapa svansen
     if len(player_snake) > player_length:
         player_snake.pop()
+
+
 
 
 
@@ -385,8 +406,10 @@ async def game_loop():
 
     while True:
         if game_state == 'playing':
+            # Räkna ner nivå-timer
             time_left -= speed_delay
 
+            # Var 20:e sekund: öka svårighetsgrad + ev. regnbågsmat
             if time_left <= 0:
                 speed_delay *= speed_multiplier
                 time_left = 20.0
@@ -399,12 +422,12 @@ async def game_loop():
                     except:
                         pass
 
+            # Uppdatera spelare + fiende
             update_snake()
-
             if counter % 2 == 0:
                 update_enemy()
 
-            # Gul mat: spawnas endast med timer, inte direkt
+            # Gul mat: vänta 5–15 sek innan nästa
             if not any(f[2] == 'yellow' for f in foods):
                 yellow_timer += speed_delay
                 if yellow_timer >= yellow_next_spawn:
@@ -412,7 +435,7 @@ async def game_loop():
                     yellow_timer = 0.0
                     yellow_next_spawn = random.uniform(5, 15)
 
-            # Rensa och rita
+            # Rita om spelplanen
             ctx.fillStyle = "black"
             ctx.fillRect(0, 0, WIDTH, HEIGHT)
             draw_snake()
@@ -423,6 +446,8 @@ async def game_loop():
             counter += 1
 
         await asyncio.sleep(speed_delay)
+
+
 
 
 
