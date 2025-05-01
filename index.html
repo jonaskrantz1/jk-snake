@@ -51,7 +51,7 @@ def _on_start(evt):
 document.addEventListener("startGame", create_proxy(_on_start))
 
 # Global constants and state
-WIDTH, HEIGHT, CELL = 600, 400, 20
+WIDTH, HEIGHT, CELL = 1000, 750, 20    # previously 600, 400, 20
 canvas = document.getElementById("gameCanvas")
 ctx = canvas.getContext("2d")
 game_state = "waiting"
