@@ -107,12 +107,14 @@ def spawn_food(kind):
 # Mobile touch controls
 
 def touch_direction(dir):
-    global direction
+    global pending_direction
     if game_state != "playing": return
-    if dir == "up" and direction[1] == 0: direction = (0, -CELL)
-    if dir == "down" and direction[1] == 0: direction = (0, CELL)
-    if dir == "left" and direction[0] == 0: direction = (-CELL, 0)
-    if dir == "right" and direction[0] == 0: direction = (CELL, 0)
+
+    if dir == "up":    pending_direction = (0, -CELL)
+    if dir == "down":  pending_direction = (0, CELL)
+    if dir == "left":  pending_direction = (-CELL, 0)
+    if dir == "right": pending_direction = (CELL, 0)
+
 
 for btn, d in [("btnUp","up"),("btnDown","down"),("btnLeft","left"),("btnRight","right")]:
     document.getElementById(btn).addEventListener("click", create_proxy(lambda e, dir=d: touch_direction(dir)))
