@@ -244,40 +244,46 @@ def draw_ui():
 # Update functions
 
 def get_valid_enemy_move(head):
-    body = enemy_snake[:-1]
-    def safe(p): return p not in body and p not in player_snake
+    body = enemy_snake[:-1]  # svansen rör sig så den kan betraktas som säker
+    def safe(pos): return pos not in body and pos not in player_snake
 
-    # Prioritera: rainbow → yellow → närmaste red
-    rainbow = [f for f in foods if f[2] == "rainbow"]
-    yellow = [f for f in foods if f[2] == "yellow"]
+    # Prioriteringslogik: rainbow → yellow → närmaste red
+    targets = (
+        [f for f in foods if f[2] == "rainbow"] or
+        [f for f in foods if f[2] == "yellow"] or
+        sorted(
+            [f for f in foods if f[2] == "red"],
+            key=lambda f: abs(f[0] - head[0]) + abs(f[1] - head[1])
+        )
+    )
 
-    if rainbow:
-        tx, ty = rainbow[0][:2]
-    elif yellow:
-        tx, ty = yellow[0][:2]
-    else:
-        reds = [f for f in foods if f[2] == "red"]
-        reds.sort(key=lambda f: abs(f[0] - head[0]) + abs(f[1] - head[1]))
-        tx, ty = (reds[0][0], reds[0][1]) if reds else (None, None)
+    tx, ty = targets[0][:2] if targets else (None, None)
 
-    dirs = [(CELL,0), (-CELL,0), (0,CELL), (0,-CELL)]
+    directions = [(CELL, 0), (-CELL, 0), (0, CELL), (0, -CELL)]
 
     if tx is not None:
-        dirs.sort(key=lambda d: abs(((head[0]+d[0]) % WIDTH) - tx) + abs(((head[1]+d[1]) % HEIGHT) - ty))
+        directions.sort(
+            key=lambda d: abs(((head[0] + d[0]) % WIDTH) - tx) + abs(((head[1] + d[1]) % HEIGHT) - ty)
+        )
 
-    for dx, dy in dirs:
+    # Försök hitta en säker riktning mot målet
+    for dx, dy in directions:
         np = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
         if safe(np):
             return dx, dy
 
-    return dirs[0]
+    # Ingen säker väg → välj första ändå (kommer krascha)
+    return directions[0]
+
 
 def update_enemy():
     global enemy_snake, enemy_length, rainbow_exists
+
     head = enemy_snake[0]
     dx, dy = get_valid_enemy_move(head)
     new = ((head[0] + dx) % WIDTH, (head[1] + dy) % HEIGHT)
 
+    # Kollision → omstart
     if new in enemy_snake or new in player_snake:
         enemy_snake[:] = [(300, 200)]
         enemy_length = 1
@@ -287,67 +293,77 @@ def update_enemy():
     enemy_snake.insert(0, new)
 
     for f in foods[:]:
-        if (f[0], f[1]) == new:
-            if f[2] == "rainbow":
+        fx, fy, kind = f
+        if (fx, fy) == new:
+            if kind == "rainbow":
                 enemy_length = max(1, enemy_length // 2)
                 enemy_snake[:] = enemy_snake[:enemy_length]
                 try: document.getElementById("soundRainbowEat").play()
                 except: pass
-                try: loop = document.getElementById("rainbowLoop"); loop.pause(); loop.currentTime = 0
+                try:
+                    loop = document.getElementById("rainbowLoop")
+                    loop.pause(); loop.currentTime = 0
                 except: pass
                 rainbow_exists = False
-            else:
+            elif kind == "red":
                 enemy_length += 1
-                if f[2] == "red":
-                    spawn_food("red")
+                spawn_food("red")
+            # gul mat ger +1 men ingen direkt spawn längre
+            elif kind == "yellow":
+                enemy_length += 1
             foods.remove(f)
-            break
+            return
 
     if len(enemy_snake) > enemy_length:
         enemy_snake.pop()
 
+
 def update_snake():
     global direction, pending_direction, last_direction, player_length, player_score, rainbow_exists
+
+    # Förhindra 180°-vändning
     if (pending_direction[0], pending_direction[1]) != (-last_direction[0], -last_direction[1]):
         direction = pending_direction
 
     hx, hy = player_snake[0]
     new = ((hx + direction[0]) % WIDTH, (hy + direction[1]) % HEIGHT)
-    last_direction = direction  # uppdatera senast använda riktning
+    last_direction = direction  # Spara senaste rörelse
 
+    # Kollision med sig själv eller fiende
     if new in player_snake or new in enemy_snake:
         asyncio.ensure_future(game_over())
         return
 
     player_snake.insert(0, new)
 
+    # Kolla om mat äts
     for f in foods[:]:
-        if (f[0], f[1]) == new and f[2] == "rainbow":
-            player_length = 5
-            player_snake[:] = player_snake[:player_length]
-            try: document.getElementById("soundRainbowEat").play()
-            except: pass
-            try:
-                loop = document.getElementById("rainbowLoop")
-                loop.pause(); loop.currentTime = 0
-            except: pass
-            rainbow_exists = False
+        fx, fy, kind = f
+        if (fx, fy) == new:
+            if kind == "rainbow":
+                player_length = 5
+                player_snake[:] = player_snake[:player_length]
+                try: document.getElementById("soundRainbowEat").play()
+                except: pass
+                try:
+                    loop = document.getElementById("rainbowLoop")
+                    loop.pause(); loop.currentTime = 0
+                except: pass
+                rainbow_exists = False
+            else:
+                player_length += 1
+                player_score += 10 if kind == "red" else 30
+                try: document.getElementById("soundFood").play()
+                except: pass
+                if kind == "red":
+                    spawn_food("red")
             foods.remove(f)
             return
 
-    for f in foods[:]:
-        if (f[0], f[1]) == new:
-            player_length += 1
-            player_score += 10 if f[2] == "red" else 30
-            try: document.getElementById("soundFood").play()
-            except: pass
-            foods.remove(f)
-            if f[2] == "red":
-                spawn_food("red")
-            return
-
+    # Om ingen mat ätits – kapa svansen
     if len(player_snake) > player_length:
         player_snake.pop()
+
 
 
 def key_handler(e):
